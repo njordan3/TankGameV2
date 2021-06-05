@@ -74,3 +74,8 @@ void ATank::SetRelativeGunRotation(FRotator Rotation)
 {
 	GunStaticMesh->SetRelativeRotation(Rotation);
 }
+
+FRotator ATank::GetRelativeGunRotation()
+{
+	return GunStaticMesh->GetRelativeRotation();
+}

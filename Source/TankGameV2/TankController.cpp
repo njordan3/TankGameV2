@@ -2,12 +2,13 @@
 
 
 #include "TankController.h"
-#include "Tank.h"
 
 ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	BodyRotationScale = 0.3f;
 	BodySpeed = 300.0f;
+
+	ProjectileClass = ATankShell::StaticClass();
 
 	bShowMouseCursor = true;
 };
@@ -22,6 +23,7 @@ void ATankController::SetupInputComponent()
 	InputComponent->BindAxis("MoveForward", this, &ATankController::MoveForward);
 	InputComponent->BindAxis("RotateBody", this, &ATankController::RotateBody);
 
+	InputComponent->BindAction("FireShell", IE_Pressed, this, &ATankController::FireShell);
 }
 
 void ATankController::PlayerTick(float DeltaTime)
@@ -60,24 +62,13 @@ void ATankController::PlayerTick(float DeltaTime)
 
 		//Get current forward vector of the Tank
 		FVector2D ForwardVector = FVector2D(GetPawn()->GetActorForwardVector());
-		
-		/* Forward Vector is 90 degrees off for whatever reason, so rotate it -90 degrees to compensate
-		* Rotation Method Derivation:
-		*	- Simplified from the rotation matrix where the angle is -90 resulting in the following matrix:
-		*			|  0  1  |
-		*			| -1  0  | -OR- FMatrix2x2 RotMatrix = FMatrix2x2(0.0f, 1.0f, -1.0f, 0.0f);
-		* 
-		*	- Multiplying any 2D vector by this matrix effectively just flips the sign of the vector's X value, so doing this is overkill:
-		*			FVector2D ForwardVector = RotMatrix.TransformVector(FVector2D(GetPawn()->GetActorForwardVector()));
-		*/
-		ForwardVector.X = -ForwardVector.X;
 
 		//2D vector math to calculate angle
 		float Dot = ForwardVector.X * MouseVector.X + ForwardVector.Y * MouseVector.Y;	//Dot Product, proportional to cosine, or X
 		float Det = ForwardVector.X * MouseVector.Y - ForwardVector.Y * MouseVector.X;	//Determinate, proportional to sine, or Y
-		float Angle = FMath::RadiansToDegrees(FMath::Atan2(Det, Dot));	//Atan2(sin, cos), or Atan2(Y, X)
+		float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Det, Dot)) - 90;	//Atan2(sin, cos), or Atan2(Y, X). -90 to move the Yaw 90 degrees counter clockwise
 
-		Cast<ATank>(GetPawn())->SetRelativeGunRotation(FRotator(0.0f, Angle, 0.0f));
+		Cast<ATank>(GetPawn())->SetRelativeGunRotation(FRotator(0.0f, Yaw, 0.0f));
 	}
 }
 
@@ -90,4 +81,31 @@ void ATankController::RotateBody(float Value)
 {
 	BodyRotationInput.Yaw = FMath::Clamp<float>(Value, -1.0f, 1.0f);
 	//BodyRotationInput.Clamp();
+}
+
+void ATankController::FireShell()
+{
+	// Attempt to fire a projectile.
+	if (ProjectileClass)
+	{
+		FRotator MuzzleRotation = Cast<ATank>(GetPawn())->GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
+		FVector MuzzleLocation = Cast<ATank>(GetPawn())->GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
+
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.Instigator = GetInstigator();
+
+			// Spawn the projectile at the muzzle.
+			ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
+			if (Projectile)
+			{
+				// Set the projectile's initial trajectory.
+				FVector LaunchDirection = MuzzleRotation.Vector();
+				Projectile->FireInDirection(LaunchDirection);
+			}
+		}
+	}
 }

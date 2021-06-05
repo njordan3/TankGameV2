@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Tank.h"
+#include "TankShell.h"
 #include "TankController.generated.h"
 
 /**
@@ -21,6 +23,10 @@ public:
 
 	virtual void PlayerTick(float DeltaTime) override;
 
+	// Projectile class to spawn.
+	UPROPERTY(EditDefaultsOnly, Category = "TankShell")
+		TSubclassOf<class ATankShell> ProjectileClass;
+
 protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		float BodySpeed;
@@ -36,6 +42,10 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Rotation")
 		float BodyRoll;
+
+	// Function that handles firing projectiles.
+	UFUNCTION()
+		void FireShell();
 
 	//Input variables
 	FVector2D MovementInput;

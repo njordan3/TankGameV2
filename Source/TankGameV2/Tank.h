@@ -26,7 +26,8 @@ public:
 	
 	void SetRelativeGunRotation(FRotator Rotation);
 
-protected:
+	FRotator GetRelativeGunRotation();
+
 	UPROPERTY(EditAnywhere)
 		class USpringArmComponent* SpringArmComp;
 
@@ -38,7 +39,4 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 		UStaticMeshComponent* GunStaticMesh;
-
-	UPROPERTY(EditAnywhere)
-		class USceneComponent* MuzzleLocation;
 };
