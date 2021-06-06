@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Tank.h"
 #include "TankShell.h"
+#include "DrawDebugHelpers.h"
 #include "TankController.generated.h"
 
 /**
@@ -28,6 +29,9 @@ public:
 		TSubclassOf<class ATankShell> ProjectileClass;
 
 protected:
+	UPROPERTY(EditAnywhere, Category = "Height")
+		float GroundOffset;
+
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		float BodySpeed;
 
