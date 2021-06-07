@@ -6,16 +6,16 @@
 ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	SuspensionLength = 30.0f;
-	SpringConstant = 1500.0f;
+	SpringConstant = 950.0f;
 	DampeningCoefficient = 1.0f;
 
 	BodyRotationScale = 0.3f;
 	BodySpeed = 1000.0f;
 
-	FrontRightSpringLength = 0.0f;
-	FrontLeftSpringLength = 0.0f;
-	BackRightSpringLength = 0.0f;
-	BackLeftSpringLength = 0.0f;
+	FrontRightSpringLength = SuspensionLength;
+	FrontLeftSpringLength = SuspensionLength;
+	BackRightSpringLength = SuspensionLength;
+	BackLeftSpringLength = SuspensionLength;
 
 	ProjectileClass = ATankShell::StaticClass();
 
@@ -87,29 +87,79 @@ void ATankController::PlayerTick(float DeltaTime)
 			FVector FrontRightLocation = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketLocation(TEXT("FrontRight"));
 			FVector FrontRightEnd = (Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector() * SuspensionLength) + FrontRightLocation;
 			
-			float PrevSpringLength = FrontRightSpringLength;
-			FrontRightSpringLength = RayCastCurrentLengthOfSpring(World, FrontRightLocation, FrontRightEnd);
+			//float PrevSpringLength = FrontRightSpringLength;
+			//FrontRightSpringLength = RayCastCurrentLengthOfSpring(World, FrontRightLocation, FrontRightEnd);
 			
-			float SpringVelocity = (FrontRightSpringLength - PrevSpringLength) / DeltaTime;
+			//float SpringVelocity = (FrontRightSpringLength - PrevSpringLength) / DeltaTime;
+			//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%f"), SpringVelocity));
 			
-			FVector FrontRightForce = CalculateDampenedSpringForce(Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector(), FrontRightSpringLength, SpringVelocity);
-			//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%f"), FrontRightSpringLength));
-			//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FrontRightForce.ToString());
-			Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(FrontRightForce, FrontRightLocation, TEXT("None"));
+			//FVector FrontRightForce = CalculateDampenedSpringForce(Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector(), FrontRightSpringLength, SpringVelocity);
+			
+			//FVector FrontRightForce = CalculateDampenedSpringForce(
+			//	Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector(), 
+			//	FrontRightLocation, FrontRightEnd, FrontRightSpringLength, SpringVelocity
+			//);
+
+			FHitResult HitResult;
+			FCollisionQueryParams CollisionParams;
+			DrawDebugLine(World, FrontRightLocation, FrontRightEnd, FColor::Green, false, 0.01f, 0, 1);
+			if (World->LineTraceSingleByChannel(HitResult, FrontRightLocation, FrontRightEnd, ECC_Visibility, CollisionParams))
+			{
+				//float PrevSpringLength = FrontRightSpringLength;
+				//FrontRightSpringLength = (HitResult.bBlockingHit ? HitResult.Distance : SuspensionLength);
+				//float SpringVelocity = (FrontRightSpringLength - PrevSpringLength) / DeltaTime;
+				FVector SpringVelocity = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector() * 
+					FVector::DotProduct(
+						GetPawn()->GetVelocity(), 
+						Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector()
+					);
+
+				FVector Sub = FrontRightLocation - HitResult.ImpactPoint;
+				FVector DampingForce = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector() * SpringVelocity * -DampeningCoefficient;
+				FVector FrontRightForce = -SpringConstant * (Sub - (SuspensionLength * (Sub / HitResult.Distance)));
+
+				Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(FrontRightForce, FrontRightLocation, TEXT("None"));
+				Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(DampingForce, FrontRightLocation, TEXT("None"));
+			}
 		}
 
 		{	//Front Left
 			FVector FrontLeftLocation = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketLocation(TEXT("FrontLeft"));
 			FVector FrontLeftEnd = (Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft")).Vector() * SuspensionLength) + FrontLeftLocation;
 
-			float PrevSpringLength = FrontLeftSpringLength;
-			FrontLeftSpringLength = RayCastCurrentLengthOfSpring(World, FrontLeftLocation, FrontLeftEnd);
+			//float PrevSpringLength = FrontLeftSpringLength;
+			//FrontLeftSpringLength = RayCastCurrentLengthOfSpring(World, FrontLeftLocation, FrontLeftEnd);
 
-			float SpringVelocity = (FrontLeftSpringLength - PrevSpringLength) / DeltaTime;
+			//float SpringVelocity = (FrontLeftSpringLength - PrevSpringLength) / DeltaTime;
 
-			FVector FrontLeftForce = CalculateDampenedSpringForce(Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft")).Vector(), FrontLeftSpringLength, SpringVelocity);
+			//FVector FrontLeftForce = CalculateDampenedSpringForce(Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft")).Vector(), FrontLeftSpringLength, SpringVelocity);
+			
+			//FVector FrontLeftForce = CalculateDampenedSpringForce(
+			//	Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft")).Vector(), 
+			//	FrontLeftLocation, FrontLeftEnd, FrontLeftSpringLength, SpringVelocity
+			//);
 
-			Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(FrontLeftForce, FrontLeftLocation, TEXT("None"));
+			FHitResult HitResult;
+			FCollisionQueryParams CollisionParams;
+			DrawDebugLine(World, FrontLeftLocation, FrontLeftEnd, FColor::Green, false, 0.01f, 0, 1);
+			if (World->LineTraceSingleByChannel(HitResult, FrontLeftLocation, FrontLeftEnd, ECC_Visibility, CollisionParams))
+			{
+				//float PrevSpringLength = FrontLeftSpringLength;
+				//FrontLeftSpringLength = (HitResult.bBlockingHit ? HitResult.Distance : SuspensionLength);
+				//float SpringVelocity = (FrontLeftSpringLength - PrevSpringLength) / DeltaTime;
+				FVector SpringVelocity = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft")).Vector() *
+					FVector::DotProduct(
+						GetPawn()->GetVelocity(),
+						Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft")).Vector()
+					);
+
+				FVector Sub = FrontLeftLocation - HitResult.ImpactPoint;
+				FVector DampingForce = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector() * SpringVelocity * -DampeningCoefficient;
+				FVector FrontLeftForce = -SpringConstant * (Sub - (SuspensionLength * (Sub / HitResult.Distance)));
+
+				Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(FrontLeftForce, FrontLeftLocation, TEXT("None"));
+				Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(DampingForce, FrontLeftLocation, TEXT("None"));
+			}
 		}
 
 
@@ -117,28 +167,80 @@ void ATankController::PlayerTick(float DeltaTime)
 			FVector BackRightLocation = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketLocation(TEXT("BackRight"));
 			FVector BackRightEnd = (Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackRight")).Vector() * SuspensionLength) + BackRightLocation;
 
-			float PrevSpringLength = BackRightSpringLength;
-			BackRightSpringLength = RayCastCurrentLengthOfSpring(World, BackRightLocation, BackRightEnd);
+			//float PrevSpringLength = BackRightSpringLength;
+			//BackRightSpringLength = RayCastCurrentLengthOfSpring(World, BackRightLocation, BackRightEnd);
 
-			float SpringVelocity = (BackRightSpringLength - PrevSpringLength) / DeltaTime;
+			//float SpringVelocity = (BackRightSpringLength - PrevSpringLength) / DeltaTime;
 
-			FVector BackRightForce = CalculateDampenedSpringForce(Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackRight")).Vector(), BackRightSpringLength, SpringVelocity);
+			//FVector BackRightForce = CalculateDampenedSpringForce(Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackRight")).Vector(), BackRightSpringLength, SpringVelocity);
+			
+			//FVector BackRightForce = CalculateDampenedSpringForce(
+			//	Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackRight")).Vector(), 
+			//	BackRightLocation, BackRightEnd, BackRightSpringLength, SpringVelocity
+			//);
 
-			Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(BackRightForce, BackRightLocation, TEXT("None"));
+			FHitResult HitResult;
+			FCollisionQueryParams CollisionParams;
+			DrawDebugLine(World, BackRightLocation, BackRightEnd, FColor::Green, false, 0.01f, 0, 1);
+			if (World->LineTraceSingleByChannel(HitResult, BackRightLocation, BackRightEnd, ECC_Visibility, CollisionParams))
+			{
+				//float PrevSpringLength = BackRightSpringLength;
+				//BackRightSpringLength = (HitResult.bBlockingHit ? HitResult.Distance : SuspensionLength);
+				//float SpringVelocity = (BackRightSpringLength - PrevSpringLength) / DeltaTime;
+
+				FVector SpringVelocity = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackRight")).Vector() *
+					FVector::DotProduct(
+						GetPawn()->GetVelocity(),
+						Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackRight")).Vector()
+					);
+
+				FVector Sub = BackRightLocation - HitResult.ImpactPoint;
+				FVector DampingForce = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector() * SpringVelocity * -DampeningCoefficient;
+				FVector BackRightForce = -SpringConstant * (Sub - (SuspensionLength * (Sub / HitResult.Distance)));
+
+				Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(BackRightForce, BackRightLocation, TEXT("None"));
+				Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(DampingForce, BackRightLocation, TEXT("None"));
+			}
 		}
 
 		{	//BackLeft
 			FVector BackLeftLocation = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketLocation(TEXT("BackLeft"));
 			FVector BackLeftEnd = (Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackLeft")).Vector() * SuspensionLength) + BackLeftLocation;
 
-			float PrevSpringLength = BackLeftSpringLength;
-			BackLeftSpringLength = RayCastCurrentLengthOfSpring(World, BackLeftLocation, BackLeftEnd);
+			//float PrevSpringLength = BackLeftSpringLength;
+			//BackLeftSpringLength = RayCastCurrentLengthOfSpring(World, BackLeftLocation, BackLeftEnd);
 
-			float SpringVelocity = (BackLeftSpringLength - PrevSpringLength) / DeltaTime;
+			//float SpringVelocity = (BackLeftSpringLength - PrevSpringLength) / DeltaTime;
 
-			FVector BackLeftForce = CalculateDampenedSpringForce(Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackLeft")).Vector(), BackLeftSpringLength, SpringVelocity);
+			//FVector BackLeftForce = CalculateDampenedSpringForce(Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackLeft")).Vector(), BackLeftSpringLength, SpringVelocity);
+			
+			//FVector BackLeftForce = CalculateDampenedSpringForce(
+			//	Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackLeft")).Vector(), 
+			//	BackLeftLocation, BackLeftEnd, BackLeftSpringLength, SpringVelocity
+			//);
 
-			Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(BackLeftForce, BackLeftLocation, TEXT("None"));
+			FHitResult HitResult;
+			FCollisionQueryParams CollisionParams;
+			DrawDebugLine(World, BackLeftLocation, BackLeftEnd, FColor::Green, false, 0.01f, 0, 1);
+			if (World->LineTraceSingleByChannel(HitResult, BackLeftLocation, BackLeftEnd, ECC_Visibility, CollisionParams))
+			{
+				//float PrevSpringLength = BackLeftSpringLength;
+				//BackLeftSpringLength = (HitResult.bBlockingHit ? HitResult.Distance : SuspensionLength);
+				//float SpringVelocity = (BackLeftSpringLength - PrevSpringLength) / DeltaTime;
+
+				FVector SpringVelocity = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackLeft")).Vector() *
+					FVector::DotProduct(
+						GetPawn()->GetVelocity(),
+						Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("BackLeft")).Vector()
+					);
+
+				FVector Sub = BackLeftLocation - HitResult.ImpactPoint;
+				FVector DampingForce = Cast<ATank>(GetPawn())->BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")).Vector() * SpringVelocity * -DampeningCoefficient;
+				FVector BackLeftForce = -SpringConstant * (Sub - (SuspensionLength * (Sub / HitResult.Distance)));
+
+				Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(BackLeftForce, BackLeftLocation, TEXT("None"));
+				Cast<ATank>(GetPawn())->BodyStaticMesh->AddForceAtLocation(DampingForce, BackLeftLocation, TEXT("None"));
+			}
 		}
 	}
 }
@@ -154,6 +256,13 @@ float ATankController::RayCastCurrentLengthOfSpring(UWorld* World, FVector Start
 FVector ATankController::CalculateDampenedSpringForce(FVector ForwardVector, float SpringLength, float SpringVelocity)
 {
 	return -ForwardVector * ((-DampeningCoefficient * SpringVelocity) - (SpringConstant * (SpringLength - SuspensionLength)));
+}
+
+FVector ATankController::CalculateDampenedSpringForce(FVector ForwardVector, FVector Start, FVector End, float SpringLength, float SpringVelocity)
+{
+	FVector Sub = End - Start;
+	float Distance = FMath::Sqrt(Sub.X * Sub.X + Sub.Y * Sub.Y + Sub.Z * Sub.Z);
+	return -SpringConstant * (Sub - (SuspensionLength * (Sub / Distance)));
 }
 
 void ATankController::MoveForward(float Value)
