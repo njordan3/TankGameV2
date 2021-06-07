@@ -29,8 +29,14 @@ public:
 		TSubclassOf<class ATankShell> ProjectileClass;
 
 protected:
-	UPROPERTY(EditAnywhere, Category = "Height")
-		float GroundOffset;
+	UPROPERTY(EditAnywhere, Category = "Spring")
+		float DampeningCoefficient;
+
+	UPROPERTY(EditAnywhere, Category = "Spring")
+		float SpringConstant;
+
+	UPROPERTY(EditAnywhere, Category = "Spring")
+		float SuspensionLength;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		float BodySpeed;
@@ -58,4 +64,13 @@ protected:
 	//Input functions
 	void MoveForward(float AxisValue);
 	void RotateBody(float AxisValue);
+
+private:
+	float FrontRightSpringLength;
+	float FrontLeftSpringLength;
+	float BackRightSpringLength;
+	float BackLeftSpringLength;
+
+	float RayCastCurrentLengthOfSpring(UWorld* World, FVector Start, FVector End);
+	FVector CalculateDampenedSpringForce(FVector ForwardVector, float SpringLength, float SpringVelocity);
 };
