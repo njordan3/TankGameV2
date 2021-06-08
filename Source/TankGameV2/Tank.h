@@ -3,11 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
+#include "SpringComponent.h"
 #include "Tank.generated.h"
 
 UCLASS()
-class TANKGAMEV2_API ATank : public ACharacter
+class TANKGAMEV2_API ATank : public APawn
 {
 	GENERATED_BODY()
 
@@ -22,8 +25,17 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
-	
+	UPROPERTY(EditAnywhere)
+		float SuspensionLength;
+
+	UPROPERTY(EditAnywhere)
+		float SpringCoefficient;
+
+	UPROPERTY(EditAnywhere)
+		float DampingCoefficient;
+
+public:
+
 	void SetRelativeGunRotation(FRotator Rotation);
 
 	FRotator GetRelativeGunRotation();
@@ -39,4 +51,16 @@ public:
 
 	UPROPERTY(EditAnywhere)
 		UStaticMeshComponent* GunStaticMesh;
+
+	UPROPERTY(EditAnywhere)
+		USpringComponent* FrontRightSpringComp;
+
+	UPROPERTY(EditAnywhere)
+		USpringComponent* FrontLeftSpringComp;
+
+	UPROPERTY(EditAnywhere)
+		USpringComponent* BackRightSpringComp;
+
+	UPROPERTY(EditAnywhere)
+		USpringComponent* BackLeftSpringComp;
 };

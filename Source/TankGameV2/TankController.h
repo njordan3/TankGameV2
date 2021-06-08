@@ -64,15 +64,4 @@ protected:
 	//Input functions
 	void MoveForward(float AxisValue);
 	void RotateBody(float AxisValue);
-
-private:
-	float FrontRightSpringLength;
-	float FrontLeftSpringLength;
-	float BackRightSpringLength;
-	float BackLeftSpringLength;
-
-	float RayCastCurrentLengthOfSpring(UWorld* World, FVector Start, FVector End);
-	FVector CalculateDampenedSpringForce(FVector ForwardVector, float SpringLength, float SpringVelocity);
-	FVector CalculateDampenedSpringForce(FVector ForwardVector, FVector Start, FVector End, float SpringLength, float SpringVelocity);
-
 };

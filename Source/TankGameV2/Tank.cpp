@@ -2,22 +2,39 @@
 
 
 #include "Tank.h"
-#include "GameFramework/SpringArmComponent.h"
-#include "Camera/CameraComponent.h"
 
 // Sets default values
 ATank::ATank()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	SuspensionLength = 60.0f;
+	SpringCoefficient = 800.0f;
+	DampingCoefficient = 100;
 
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 
+	//Initialize Tank Body Static Mesh
+	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
+	RootComponent = BodyStaticMesh;
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/TankMeshes/TankBody.TankBody"));
+	UStaticMesh* BodyAsset = BodyMesh.Object;
+	BodyStaticMesh->SetStaticMesh(BodyAsset);
+
+	//Initialize Tank Gun Static Mesh
+	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
+	GunStaticMesh->SetupAttachment(BodyStaticMesh);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
+	UStaticMesh* GunAsset = GunMesh.Object;
+	GunStaticMesh->SetStaticMesh(GunAsset);
+	GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body
+
 	//Initialize Spring Arm Component
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
-	SpringArmComp->SetupAttachment((USceneComponent*)GetCapsuleComponent());
+	SpringArmComp->SetupAttachment(BodyStaticMesh);
 	SpringArmComp->SetRelativeLocationAndRotation(
 		FVector(0.0f, 0.0f, 0.0f),
 		FRotator(-89.9f, 0.0f, 0.0f)
@@ -31,21 +48,21 @@ ATank::ATank()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 
-	//Initialize Tank Body Static Mesh
-	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
-	BodyStaticMesh->SetupAttachment((USceneComponent*)GetCapsuleComponent());
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/TankMeshes/TankBody.TankBody"));
-	UStaticMesh* BodyAsset = BodyMesh.Object;
-	BodyStaticMesh->SetStaticMesh(BodyAsset);
-	BodyStaticMesh->SetRelativeLocation(FVector(-50.0f, 0.0f, -88.0f));	//Rest Tank Body on the ground and position Capsule Component where the gun rotates
+	//Initialize Front Right Spring Component
+	FrontRightSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("FrontRightSpringComponent"));
+	FrontRightSpringComp->SetupAttachment(BodyStaticMesh);
 
-	//Initialize Tank Gun Static Mesh
-	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
-	GunStaticMesh->SetupAttachment(BodyStaticMesh);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
-	UStaticMesh* GunAsset = GunMesh.Object;
-	GunStaticMesh->SetStaticMesh(GunAsset);
-	GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body
+	//Initialize Front Left Spring Component
+	FrontLeftSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("FrontLeftSpringComponent"));
+	FrontLeftSpringComp->SetupAttachment(BodyStaticMesh);
+
+	//Initialize Back Right Spring Component
+	BackRightSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("BackRightSpringComponent"));
+	BackRightSpringComp->SetupAttachment(BodyStaticMesh);
+
+	//Initialize Back Left Spring Component
+	BackLeftSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("BackLeftSpringComponent"));
+	BackLeftSpringComp->SetupAttachment(BodyStaticMesh);
 
 	//Take control of the default Player
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -55,12 +72,45 @@ ATank::ATank()
 void ATank::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	check(GEngine != nullptr);
 
-	// Display a debug message for five seconds. 
-	// The -1 "Key" value argument prevents the message from being updated or refreshed.
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("We are using FPSCharacter."));
+	// Set Front Right variables
+	FrontRightSpringComp->SetWorldLocationAndRotation(
+		BodyStaticMesh->GetSocketLocation(TEXT("FrontRight")),
+		BodyStaticMesh->GetSocketRotation(TEXT("FrontRight"))
+	);
+	FrontRightSpringComp->SuspensionLength = SuspensionLength;
+	FrontRightSpringComp->SpringCoefficient = SpringCoefficient;
+	FrontRightSpringComp->DampingCoefficient = DampingCoefficient;
+
+	// Set Front Left variables
+	FrontLeftSpringComp->SetWorldLocationAndRotation(
+		BodyStaticMesh->GetSocketLocation(TEXT("FrontLeft")),
+		BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft"))
+	);
+	FrontLeftSpringComp->SuspensionLength = SuspensionLength;
+	FrontLeftSpringComp->SpringCoefficient = SpringCoefficient;
+	FrontLeftSpringComp->DampingCoefficient = DampingCoefficient;
+
+	// Set Back Right variables
+	BackRightSpringComp->SetWorldLocationAndRotation(
+		BodyStaticMesh->GetSocketLocation(TEXT("BackRight")),
+		BodyStaticMesh->GetSocketRotation(TEXT("BackRight"))
+	);
+	BackRightSpringComp->SuspensionLength = SuspensionLength;
+	BackRightSpringComp->SpringCoefficient = SpringCoefficient;
+	BackRightSpringComp->DampingCoefficient = DampingCoefficient;
+
+	// Set Back Left variables
+	BackLeftSpringComp->SetWorldLocationAndRotation(
+		BodyStaticMesh->GetSocketLocation(TEXT("BackLeft")),
+		BodyStaticMesh->GetSocketRotation(TEXT("BackLeft"))
+	);
+	BackLeftSpringComp->SuspensionLength = SuspensionLength;
+	BackLeftSpringComp->SpringCoefficient = SpringCoefficient;
+	BackLeftSpringComp->DampingCoefficient = DampingCoefficient;
+
+	check(GEngine != nullptr);
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Tank Initialized"));
 }
 
 // Called every frame
