@@ -4,9 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
-#include "GameFramework/SpringArmComponent.h"
-#include "Camera/CameraComponent.h"
-#include "SpringComponent.h"
 #include "Tank.generated.h"
 
 UCLASS()
@@ -26,25 +23,40 @@ protected:
 	virtual void BeginPlay() override;
 
 	UPROPERTY(EditAnywhere)
-		float SuspensionLength;
-
-	UPROPERTY(EditAnywhere)
-		float SpringCoefficient;
-
-	UPROPERTY(EditAnywhere)
-		float DampingCoefficient;
-
-public:
-
-	void SetRelativeGunRotation(FRotator Rotation);
-
-	FRotator GetRelativeGunRotation();
-
-	UPROPERTY(EditAnywhere)
 		class USpringArmComponent* SpringArmComp;
 
 	UPROPERTY(EditAnywhere)
 		class UCameraComponent* CameraComp;
+
+	UPROPERTY(EditAnywhere, Category = "Suspension")
+		float SuspensionLength;
+
+	UPROPERTY(EditAnywhere, Category = "Suspension")
+		float SpringCoefficient;
+
+	UPROPERTY(EditAnywhere, Category = "Suspension")
+		float DampingCoefficient;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float ForwardForce;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float AngularDamping;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float LinearDamping;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float DriftCoefficient;
+
+public:
+
+	void SetRelativeGunRotation(FRotator Rotation);
+	FRotator GetRelativeGunRotation();
+	float GetForwardForce();
+	FVector GetDirectedSuspensionNormal(float Direction = 0.0f);
+	float GetRatioOfGroundedSprings();
+	float GetDriftCoefficient();
 
 	UPROPERTY(EditAnywhere)
 		UStaticMeshComponent* BodyStaticMesh;
@@ -53,14 +65,14 @@ public:
 		UStaticMeshComponent* GunStaticMesh;
 
 	UPROPERTY(EditAnywhere)
-		USpringComponent* FrontRightSpringComp;
+		class USpringComponent* FrontRightSpringComp;
 
 	UPROPERTY(EditAnywhere)
-		USpringComponent* FrontLeftSpringComp;
+		class USpringComponent* FrontLeftSpringComp;
 
 	UPROPERTY(EditAnywhere)
-		USpringComponent* BackRightSpringComp;
+		class USpringComponent* BackRightSpringComp;
 
 	UPROPERTY(EditAnywhere)
-		USpringComponent* BackLeftSpringComp;
+		class USpringComponent* BackLeftSpringComp;
 };

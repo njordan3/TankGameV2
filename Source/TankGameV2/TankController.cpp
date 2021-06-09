@@ -1,17 +1,23 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "TankController.h"
+#include "Tank.h"
+#include "TankShell.h"
+#include "DrawDebugHelpers.h"
+#include "Kismet/KismetMathLibrary.h"
 
 ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	BodyRotationScale = 0.3f;
-	BodySpeed = 1000.0f;
-
 	ProjectileClass = ATankShell::StaticClass();
 
 	bShowMouseCursor = true;
 };
+
+void ATankController::BeginPlay() {
+	Super::BeginPlay();
+
+	OwnerTank = Cast<ATank>(GetPawn());
+}
 
 // Called to bind functionality to input
 void ATankController::SetupInputComponent()
@@ -24,32 +30,42 @@ void ATankController::SetupInputComponent()
 	InputComponent->BindAxis("RotateBody", this, &ATankController::RotateBody);
 
 	InputComponent->BindAction("FireShell", IE_Pressed, this, &ATankController::FireShell);
+
+	check(GEngine != nullptr);
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Tank Controls Initialized"));
 }
 
 void ATankController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
 
-	{
+	{	//Body Rotation
 		if (!BodyRotationInput.IsZero())
 		{	
-			SetControlRotation(GetPawn()->GetActorRotation() + (BodyRotationInput * BodyRotationScale));
+			SetControlRotation(OwnerTank->GetActorRotation() + (BodyRotationInput));
 			//GetPawn()->AddActorWorldRotation(FQuat(BodyRotationInput * BodyRotationScale));
 		}
 	}
 
-	{
-		/*
-		if (!MovementInput.IsZero())
+	{	//Forward Movement
+		if (ForwardInput != 0.0f)
 		{
-			MovementInput = MovementInput.GetSafeNormal() * BodySpeed;
-			FVector NewLocation = GetPawn()->GetActorLocation();
-			NewLocation += GetPawn()->GetActorForwardVector() * MovementInput.X * DeltaTime;
-			NewLocation += GetPawn()->GetActorRightVector() * MovementInput.Y * DeltaTime;
-			GetPawn()->SetActorLocation(NewLocation);
+			float GroundedSpringRatio = OwnerTank->GetRatioOfGroundedSprings();
+			if (GroundedSpringRatio > 0.0f)
+			{
+				//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
+				FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(OwnerTank->GetActorForwardVector(), OwnerTank->GetDirectedSuspensionNormal());
+				//Calculate the force and reduce it by the ratio of however many Springs are grounded
+				FVector Force = Direction * ForwardInput * OwnerTank->GetForwardForce() * GroundedSpringRatio;
+				OwnerTank->BodyStaticMesh->AddImpulse(Force);
+			}
 		}
-		*/
-		
+	}
+
+	{	//Counteract Drifting
+		float DriftAmount = FVector::DotProduct(OwnerTank->GetVelocity(), OwnerTank->GetActorRightVector());
+		FVector AntiDriftForce = OwnerTank->GetActorRightVector() * -DriftAmount * OwnerTank->GetDriftCoefficient();
+		OwnerTank->BodyStaticMesh->AddImpulse(AntiDriftForce);
 	}
 
 	{	//Get the angle between mouse position and the current forward vector and rotate the Gun mesh
@@ -61,23 +77,20 @@ void ATankController::PlayerTick(float DeltaTime)
 		//Get vector from the center of the viewport to the mouse position
 		FVector2D MouseVector = FVector2D(PawnPosition.X - MouseX, PawnPosition.Y - MouseY);
 		//Get current forward vector of the Tank
-		FVector2D ForwardVector = FVector2D(GetPawn()->GetActorForwardVector());
+		FVector2D ForwardVector = FVector2D(OwnerTank->GetActorForwardVector());
 
 		//2D vector math to calculate angle
 		float Dot = ForwardVector.X * MouseVector.X + ForwardVector.Y * MouseVector.Y;	//Dot Product, proportional to cosine, or X
 		float Det = ForwardVector.X * MouseVector.Y - ForwardVector.Y * MouseVector.X;	//Determinate, proportional to sine, or Y
 		float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Det, Dot)) - 90;	//Atan2(sin, cos), or Atan2(Y, X). -90 to move the Yaw 90 degrees counter clockwise
 
-		Cast<ATank>(GetPawn())->SetRelativeGunRotation(FRotator(0.0f, Yaw, 0.0f));
+		OwnerTank->SetRelativeGunRotation(FRotator(0.0f, Yaw, 0.0f));
 	}
 }
 
 void ATankController::MoveForward(float Value)
 {
-	//MovementInput.X = FMath::Clamp<float>(Value, -1.0f, 1.0f);
-	FVector ForwardVector = Cast<ATank>(GetPawn())->GetActorForwardVector();
-
-	Cast<ATank>(GetPawn())->BodyStaticMesh->AddForce(ForwardVector * Value * BodySpeed);
+	ForwardInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
 }
 
 void ATankController::RotateBody(float Value)
@@ -91,8 +104,8 @@ void ATankController::FireShell()
 	// Attempt to fire a projectile.
 	if (ProjectileClass)
 	{
-		FRotator MuzzleRotation = Cast<ATank>(GetPawn())->GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
-		FVector MuzzleLocation = Cast<ATank>(GetPawn())->GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
+		FRotator MuzzleRotation = OwnerTank->GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
+		FVector MuzzleLocation = OwnerTank->GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
 
 		UWorld* World = GetWorld();
 		if (World)

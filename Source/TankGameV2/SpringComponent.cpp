@@ -1,7 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "DrawDebugHelpers.h"
 #include "SpringComponent.h"
+#include "DrawDebugHelpers.h"
+#include "Containers/Array.h"
 
 // Sets default values for this component's properties
 USpringComponent::USpringComponent()
@@ -11,6 +12,11 @@ USpringComponent::USpringComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	PreviousSuspensionLengthDelta = 0.0f;
+	PreviousCompressionRatio = 0.0f;
+	PreviousImpactPoint = FVector::ZeroVector;
+	PreviousImpactNormal = FVector::ZeroVector;
+
+	Grounded = false;
 }
 
 
@@ -18,9 +24,33 @@ USpringComponent::USpringComponent()
 void USpringComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	//Owner = Cast<UPrimitiveComponent>(GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass())[0]);
 
-	Owner = Cast<UPrimitiveComponent>(GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass())[0]);
+	TArray<UPrimitiveComponent*> OwnerComponents;
+	GetOwner()->GetComponents<UPrimitiveComponent>(OwnerComponents, false);
+	Owner = OwnerComponents[0];
 	Owner->SetSimulatePhysics(true);
+}
+
+float USpringComponent::GetCompressionRatio()
+{
+	return PreviousCompressionRatio;
+}
+
+FVector USpringComponent::GetImpactPoint()
+{
+	return PreviousImpactPoint;
+}
+
+FVector USpringComponent::GetImpactNormal()
+{
+	return PreviousImpactNormal;
+}
+
+bool USpringComponent::IsGrounded()
+{
+	return Grounded;
 }
 
 
@@ -33,8 +63,6 @@ void USpringComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	{
 		UWorld* World = GetWorld();
 
-		DrawDebugSphere(World, Owner->GetBodyInstance()->GetCOMPosition(), 100.0f, 32, FColor::Yellow);
-
 		FVector Start = GetComponentLocation();
 		FVector End = (GetComponentRotation().Vector() * SuspensionLength) + Start;
 
@@ -44,7 +72,8 @@ void USpringComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 		DrawDebugLine(World, Start, End, FColor::Green, false, 0.01f, 0, 1);
 
-		if (World->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams))
+		Grounded = World->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
+		if (Grounded)
 		{
 			float SuspensionLengthDelta = HitResult.Distance - SuspensionLength;
 			float Velocity = (SuspensionLengthDelta - PreviousSuspensionLengthDelta) / DeltaTime;
@@ -54,6 +83,9 @@ void USpringComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 			Owner->AddForceAtLocation(Force, Start);
 
 			PreviousSuspensionLengthDelta = SuspensionLengthDelta;
+			PreviousCompressionRatio = HitResult.Distance / SuspensionLength;
+			PreviousImpactPoint = HitResult.ImpactPoint;
+			PreviousImpactNormal = HitResult.ImpactNormal;
 		}
 	}
 }

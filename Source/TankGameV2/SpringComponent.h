@@ -24,6 +24,11 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	float GetCompressionRatio();
+	FVector GetImpactPoint();
+	FVector GetImpactNormal();
+	bool IsGrounded();
+
 	UPROPERTY(EditAnywhere)
 		float SuspensionLength;
 
@@ -37,5 +42,9 @@ protected:
 	UPrimitiveComponent* Owner;
 
 private:
+	bool Grounded;
 	float PreviousSuspensionLengthDelta;
+	float PreviousCompressionRatio;
+	FVector PreviousImpactPoint;
+	FVector PreviousImpactNormal;
 };

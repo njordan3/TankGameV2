@@ -1,7 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Tank.h"
+#include "Containers/Array.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
+#include "SpringComponent.h"
 
 // Sets default values
 ATank::ATank()
@@ -13,16 +17,24 @@ ATank::ATank()
 	SpringCoefficient = 800.0f;
 	DampingCoefficient = 100;
 
+	ForwardForce = 1000.0f;
+	AngularDamping = 1.5f;
+	LinearDamping = 0.5f;
+	DriftCoefficient = 1.0f;
+
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 
 	//Initialize Tank Body Static Mesh
 	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
-	RootComponent = BodyStaticMesh;
+	BodyStaticMesh->SetupAttachment(RootComponent);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/TankMeshes/TankBody.TankBody"));
 	UStaticMesh* BodyAsset = BodyMesh.Object;
 	BodyStaticMesh->SetStaticMesh(BodyAsset);
+	BodyStaticMesh->SetAngularDamping(AngularDamping);
+	BodyStaticMesh->SetLinearDamping(LinearDamping);
+	BodyStaticMesh->SetMassOverrideInKg(NAME_None, 100.0f, true);
 
 	//Initialize Tank Gun Static Mesh
 	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
@@ -117,7 +129,6 @@ void ATank::BeginPlay()
 void ATank::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void ATank::SetRelativeGunRotation(FRotator Rotation)
@@ -128,4 +139,43 @@ void ATank::SetRelativeGunRotation(FRotator Rotation)
 FRotator ATank::GetRelativeGunRotation()
 {
 	return GunStaticMesh->GetRelativeRotation();
+}
+
+float ATank::GetForwardForce()
+{
+	return ForwardForce;
+}
+
+FVector ATank::GetDirectedSuspensionNormal(float Direction)
+{
+	TArray<FVector> SuspensionNormals;
+
+	//Consider Front
+	if (Direction >= 0.0f) {
+		SuspensionNormals.Push(FrontRightSpringComp->GetImpactNormal());
+		SuspensionNormals.Push(FrontLeftSpringComp->GetImpactNormal());
+	}
+	//Consider Back
+	if (Direction <= 0.0f)
+	{
+		SuspensionNormals.Push(BackRightSpringComp->GetImpactNormal());
+		SuspensionNormals.Push(BackLeftSpringComp->GetImpactNormal());
+	}
+	
+	return UKismetMathLibrary::GetVectorArrayAverage(SuspensionNormals).GetSafeNormal();
+}
+
+float ATank::GetRatioOfGroundedSprings()
+{
+	return (
+		FrontRightSpringComp->IsGrounded() + 
+		FrontLeftSpringComp->IsGrounded() +
+		BackRightSpringComp->IsGrounded() +
+		BackLeftSpringComp->IsGrounded()
+	) / 4.0f;
+}
+
+float ATank::GetDriftCoefficient()
+{
+	return DriftCoefficient;
 }

@@ -4,9 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "Tank.h"
-#include "TankShell.h"
-#include "DrawDebugHelpers.h"
 #include "TankController.generated.h"
 
 /**
@@ -20,6 +17,8 @@ class TANKGAMEV2_API ATankController : public APlayerController
 public:
     ATankController(const FObjectInitializer& ObjectInitializer);
 
+	virtual void BeginPlay() override;
+
 	virtual void SetupInputComponent() override;
 
 	virtual void PlayerTick(float DeltaTime) override;
@@ -29,39 +28,18 @@ public:
 		TSubclassOf<class ATankShell> ProjectileClass;
 
 protected:
-	UPROPERTY(EditAnywhere, Category = "Spring")
-		float DampeningCoefficient;
-
-	UPROPERTY(EditAnywhere, Category = "Spring")
-		float SpringConstant;
-
-	UPROPERTY(EditAnywhere, Category = "Spring")
-		float SuspensionLength;
-
-	UPROPERTY(EditAnywhere, Category = "Movement")
-		float BodySpeed;
-
-	UPROPERTY(EditAnywhere, Category = "Rotation")
-		float BodyRotationScale;
-
-	UPROPERTY(EditAnywhere, Category = "Rotation")
-		float BodyYaw;
-
-	UPROPERTY(EditAnywhere, Category = "Rotation")
-		float BodyPitch;
-
-	UPROPERTY(EditAnywhere, Category = "Rotation")
-		float BodyRoll;
-
 	// Function that handles firing projectiles.
 	UFUNCTION()
 		void FireShell();
 
 	//Input variables
-	FVector2D MovementInput;
+	float ForwardInput;
 	FRotator BodyRotationInput;
 
 	//Input functions
 	void MoveForward(float AxisValue);
 	void RotateBody(float AxisValue);
+
+private:
+	class ATank* OwnerTank;
 };
