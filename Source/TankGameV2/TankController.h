@@ -34,7 +34,7 @@ protected:
 
 	//Input variables
 	float ForwardInput;
-	FRotator BodyRotationInput;
+	float RotationInput;
 
 	//Input functions
 	void MoveForward(float AxisValue);

@@ -39,18 +39,23 @@ void ATankController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
 
+	float GroundedSpringRatio = OwnerTank->GetRatioOfGroundedSprings();
+
 	{	//Body Rotation
-		if (!BodyRotationInput.IsZero())
+		if (RotationInput != 0.0f)
 		{	
-			SetControlRotation(OwnerTank->GetActorRotation() + (BodyRotationInput));
-			//GetPawn()->AddActorWorldRotation(FQuat(BodyRotationInput * BodyRotationScale));
+			if (GroundedSpringRatio > 0.0f)
+			{
+				FVector Torque = OwnerTank->GetActorUpVector() * RotationInput * OwnerTank->GetTurnTorque() * GroundedSpringRatio;
+				OwnerTank->BodyStaticMesh->AddTorqueInDegrees(Torque);
+			}
 		}
 	}
 
 	{	//Forward Movement
 		if (ForwardInput != 0.0f)
 		{
-			float GroundedSpringRatio = OwnerTank->GetRatioOfGroundedSprings();
+			
 			if (GroundedSpringRatio > 0.0f)
 			{
 				//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
@@ -95,8 +100,7 @@ void ATankController::MoveForward(float Value)
 
 void ATankController::RotateBody(float Value)
 {
-	BodyRotationInput.Yaw = FMath::Clamp<float>(Value, -1.0f, 1.0f);
-	//BodyRotationInput.Clamp();
+	RotationInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
 }
 
 void ATankController::FireShell()

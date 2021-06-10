@@ -14,10 +14,11 @@ ATank::ATank()
 	PrimaryActorTick.bCanEverTick = true;
 
 	SuspensionLength = 60.0f;
-	SpringCoefficient = 800.0f;
+	SpringCoefficient = 3000.0f;
 	DampingCoefficient = 100;
 
 	ForwardForce = 1000.0f;
+	TurnTorque = 500000000.0f;
 	AngularDamping = 1.5f;
 	LinearDamping = 0.5f;
 	DriftCoefficient = 1.0f;
@@ -144,6 +145,11 @@ FRotator ATank::GetRelativeGunRotation()
 float ATank::GetForwardForce()
 {
 	return ForwardForce;
+}
+
+float ATank::GetTurnTorque()
+{
+	return TurnTorque;
 }
 
 FVector ATank::GetDirectedSuspensionNormal(float Direction)

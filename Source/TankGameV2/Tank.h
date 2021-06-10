@@ -41,6 +41,9 @@ protected:
 		float ForwardForce;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
+		float TurnTorque;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
 		float AngularDamping;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
@@ -57,6 +60,7 @@ public:
 	FVector GetDirectedSuspensionNormal(float Direction = 0.0f);
 	float GetRatioOfGroundedSprings();
 	float GetDriftCoefficient();
+	float GetTurnTorque();
 
 	UPROPERTY(EditAnywhere)
 		UStaticMeshComponent* BodyStaticMesh;
