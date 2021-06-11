@@ -41,6 +41,9 @@ protected:
 		float ForwardForce;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
+		FVector ForwardForceOffset;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
 		float TurnTorque;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
@@ -54,13 +57,21 @@ protected:
 
 public:
 
-	void SetRelativeGunRotation(FRotator Rotation);
-	FRotator GetRelativeGunRotation();
-	float GetForwardForce();
+	FORCEINLINE void SetRelativeGunRotation(FRotator Rotation) { GunStaticMesh->SetRelativeRotation(Rotation); }
+
+	FORCEINLINE FRotator GetRelativeGunRotation() { return GunStaticMesh->GetRelativeRotation(); }
+
+	FORCEINLINE float GetForwardForce() { return ForwardForce; }
+
+	FORCEINLINE FVector GetForwardForceOffset() { return ForwardForceOffset; }
+
+	FORCEINLINE float GetDriftCoefficient() { return DriftCoefficient; }
+
+	FORCEINLINE float GetTurnTorque() { return TurnTorque; }
+
 	FVector GetDirectedSuspensionNormal(float Direction = 0.0f);
+
 	float GetRatioOfGroundedSprings();
-	float GetDriftCoefficient();
-	float GetTurnTorque();
 
 	UPROPERTY(EditAnywhere)
 		UStaticMeshComponent* BodyStaticMesh;
@@ -79,4 +90,6 @@ public:
 
 	UPROPERTY(EditAnywhere)
 		class USpringComponent* BackLeftSpringComp;
+private:
+	FVector DefaultCenterOfMass;
 };

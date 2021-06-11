@@ -40,36 +40,42 @@ void ATankController::PlayerTick(float DeltaTime)
 	Super::PlayerTick(DeltaTime);
 
 	float GroundedSpringRatio = OwnerTank->GetRatioOfGroundedSprings();
+	FVector ForwardVector = OwnerTank->GetActorForwardVector();
+	FVector RightVector = OwnerTank->GetActorRightVector();
+	FVector UpVector = OwnerTank->GetActorUpVector();
+
+	DrawDebugSphere(GetWorld(), OwnerTank->BodyStaticMesh->GetBodyInstance()->GetCOMPosition(), 5.0f, 32, FColor::Yellow, false, 0.02f);
+	DrawDebugSphere(GetWorld(), OwnerTank->GetActorLocation(), 10.0f, 32, FColor::Blue, false, 0.02f);
 
 	{	//Body Rotation
-		if (RotationInput != 0.0f)
+		if (RotationInput != 0.0f && GroundedSpringRatio > 0.0f)
 		{	
-			if (GroundedSpringRatio > 0.0f)
-			{
-				FVector Torque = OwnerTank->GetActorUpVector() * RotationInput * OwnerTank->GetTurnTorque() * GroundedSpringRatio;
-				OwnerTank->BodyStaticMesh->AddTorqueInDegrees(Torque);
-			}
+			FVector Torque = UpVector * RotationInput * OwnerTank->GetTurnTorque() * GroundedSpringRatio;
+			OwnerTank->BodyStaticMesh->AddTorqueInDegrees(Torque);
 		}
 	}
 
 	{	//Forward Movement
-		if (ForwardInput != 0.0f)
+		if (ForwardInput != 0.0f && GroundedSpringRatio > 0.0f)
 		{
-			
-			if (GroundedSpringRatio > 0.0f)
-			{
-				//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
-				FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(OwnerTank->GetActorForwardVector(), OwnerTank->GetDirectedSuspensionNormal());
-				//Calculate the force and reduce it by the ratio of however many Springs are grounded
-				FVector Force = Direction * ForwardInput * OwnerTank->GetForwardForce() * GroundedSpringRatio;
-				OwnerTank->BodyStaticMesh->AddImpulse(Force);
-			}
+			//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
+			FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, OwnerTank->GetDirectedSuspensionNormal());
+			//Calculate the force and reduce it by the ratio of however many Springs are grounded
+			FVector Force = Direction * ForwardInput * OwnerTank->GetForwardForce() * GroundedSpringRatio;
+			//Calculate location to add the force. The offsets add a "bounciness" to accelerating and braking
+			FVector ForceOffset = OwnerTank->GetForwardForceOffset();
+			FVector Location = OwnerTank->GetActorLocation() +
+				ForceOffset.X * ForwardVector +
+				ForceOffset.Y * RightVector +
+				ForceOffset.Z * UpVector;
+
+			OwnerTank->BodyStaticMesh->AddForceAtLocation(Force, Location);
 		}
 	}
 
 	{	//Counteract Drifting
-		float DriftAmount = FVector::DotProduct(OwnerTank->GetVelocity(), OwnerTank->GetActorRightVector());
-		FVector AntiDriftForce = OwnerTank->GetActorRightVector() * -DriftAmount * OwnerTank->GetDriftCoefficient();
+		float DriftAmount = FVector::DotProduct(OwnerTank->GetVelocity(), RightVector);
+		FVector AntiDriftForce = RightVector * -DriftAmount * OwnerTank->GetDriftCoefficient();
 		OwnerTank->BodyStaticMesh->AddImpulse(AntiDriftForce);
 	}
 
@@ -81,8 +87,6 @@ void ATankController::PlayerTick(float DeltaTime)
 
 		//Get vector from the center of the viewport to the mouse position
 		FVector2D MouseVector = FVector2D(PawnPosition.X - MouseX, PawnPosition.Y - MouseY);
-		//Get current forward vector of the Tank
-		FVector2D ForwardVector = FVector2D(OwnerTank->GetActorForwardVector());
 
 		//2D vector math to calculate angle
 		float Dot = ForwardVector.X * MouseVector.X + ForwardVector.Y * MouseVector.Y;	//Dot Product, proportional to cosine, or X

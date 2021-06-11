@@ -14,10 +14,11 @@ ATank::ATank()
 	PrimaryActorTick.bCanEverTick = true;
 
 	SuspensionLength = 60.0f;
-	SpringCoefficient = 3000.0f;
-	DampingCoefficient = 100;
+	SpringCoefficient = 2000.0f;
+	DampingCoefficient = 100.0f;
 
-	ForwardForce = 1000.0f;
+	ForwardForce = 200000.0f;
+	ForwardForceOffset = FVector(10.0f, 0.0f, -10.0f);
 	TurnTorque = 500000000.0f;
 	AngularDamping = 1.5f;
 	LinearDamping = 0.5f;
@@ -27,7 +28,7 @@ ATank::ATank()
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 
-	//Initialize Tank Body Static Mesh
+	//Initialize Tank Body Static Mesh ============================================
 	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
 	BodyStaticMesh->SetupAttachment(RootComponent);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/TankMeshes/TankBody.TankBody"));
@@ -35,9 +36,14 @@ ATank::ATank()
 	BodyStaticMesh->SetStaticMesh(BodyAsset);
 	BodyStaticMesh->SetAngularDamping(AngularDamping);
 	BodyStaticMesh->SetLinearDamping(LinearDamping);
-	BodyStaticMesh->SetMassOverrideInKg(NAME_None, 100.0f, true);
 
-	//Initialize Tank Gun Static Mesh
+	//Change Mass Properties
+	DefaultCenterOfMass = BodyStaticMesh->GetCenterOfMass();
+	BodyStaticMesh->SetCenterOfMass(FVector(0.0f, 0.0f, -150.0f));
+	BodyStaticMesh->SetMassOverrideInKg(NAME_None, 100.0f);
+	BodyStaticMesh->GetBodyInstance()->UpdateMassProperties();
+
+	//Initialize Tank Gun Static Mesh =============================================
 	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
 	GunStaticMesh->SetupAttachment(BodyStaticMesh);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
@@ -45,7 +51,7 @@ ATank::ATank()
 	GunStaticMesh->SetStaticMesh(GunAsset);
 	GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body
 
-	//Initialize Spring Arm Component
+	//Initialize Spring Arm Component =============================================
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
 	SpringArmComp->SetupAttachment(BodyStaticMesh);
 	SpringArmComp->SetRelativeLocationAndRotation(
@@ -57,27 +63,27 @@ ATank::ATank()
 	SpringArmComp->bInheritRoll = false;
 	SpringArmComp->bInheritYaw = false;
 
-	//Initialize Camera Component
+	//Initialize Camera Component =================================================
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 
-	//Initialize Front Right Spring Component
+	//Initialize Front Right Spring Component =====================================
 	FrontRightSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("FrontRightSpringComponent"));
 	FrontRightSpringComp->SetupAttachment(BodyStaticMesh);
 
-	//Initialize Front Left Spring Component
+	//Initialize Front Left Spring Component ======================================
 	FrontLeftSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("FrontLeftSpringComponent"));
 	FrontLeftSpringComp->SetupAttachment(BodyStaticMesh);
 
-	//Initialize Back Right Spring Component
+	//Initialize Back Right Spring Component ======================================
 	BackRightSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("BackRightSpringComponent"));
 	BackRightSpringComp->SetupAttachment(BodyStaticMesh);
 
-	//Initialize Back Left Spring Component
+	//Initialize Back Left Spring Component =======================================
 	BackLeftSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("BackLeftSpringComponent"));
 	BackLeftSpringComp->SetupAttachment(BodyStaticMesh);
 
-	//Take control of the default Player
+	//Take control of the default Player ==========================================
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
 
@@ -132,26 +138,6 @@ void ATank::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void ATank::SetRelativeGunRotation(FRotator Rotation)
-{
-	GunStaticMesh->SetRelativeRotation(Rotation);
-}
-
-FRotator ATank::GetRelativeGunRotation()
-{
-	return GunStaticMesh->GetRelativeRotation();
-}
-
-float ATank::GetForwardForce()
-{
-	return ForwardForce;
-}
-
-float ATank::GetTurnTorque()
-{
-	return TurnTorque;
-}
-
 FVector ATank::GetDirectedSuspensionNormal(float Direction)
 {
 	TArray<FVector> SuspensionNormals;
@@ -179,9 +165,4 @@ float ATank::GetRatioOfGroundedSprings()
 		BackRightSpringComp->IsGrounded() +
 		BackLeftSpringComp->IsGrounded()
 	) / 4.0f;
-}
-
-float ATank::GetDriftCoefficient()
-{
-	return DriftCoefficient;
 }
