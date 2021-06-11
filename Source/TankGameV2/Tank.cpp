@@ -58,7 +58,7 @@ ATank::ATank()
 		FVector(0.0f, 0.0f, 0.0f),
 		FRotator(-89.9f, 0.0f, 0.0f)
 	);
-	SpringArmComp->TargetArmLength = 1500.0f;
+	SpringArmComp->TargetArmLength = 3000.0f;
 	SpringArmComp->bInheritPitch = false;
 	SpringArmComp->bInheritRoll = false;
 	SpringArmComp->bInheritYaw = false;

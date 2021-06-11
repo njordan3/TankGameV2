@@ -57,7 +57,7 @@ protected:
 
 public:
 
-	FORCEINLINE void SetRelativeGunRotation(FRotator Rotation) { GunStaticMesh->SetRelativeRotation(Rotation); }
+	FORCEINLINE void SetRelativeGunRotation(FRotator Rotation) { GunStaticMesh->SetWorldRotation(Rotation); }
 
 	FORCEINLINE FRotator GetRelativeGunRotation() { return GunStaticMesh->GetRelativeRotation(); }
 

@@ -44,9 +44,6 @@ void ATankController::PlayerTick(float DeltaTime)
 	FVector RightVector = OwnerTank->GetActorRightVector();
 	FVector UpVector = OwnerTank->GetActorUpVector();
 
-	DrawDebugSphere(GetWorld(), OwnerTank->BodyStaticMesh->GetBodyInstance()->GetCOMPosition(), 5.0f, 32, FColor::Yellow, false, 0.02f);
-	DrawDebugSphere(GetWorld(), OwnerTank->GetActorLocation(), 10.0f, 32, FColor::Blue, false, 0.02f);
-
 	{	//Body Rotation
 		if (RotationInput != 0.0f && GroundedSpringRatio > 0.0f)
 		{	
@@ -62,7 +59,8 @@ void ATankController::PlayerTick(float DeltaTime)
 			FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, OwnerTank->GetDirectedSuspensionNormal());
 			//Calculate the force and reduce it by the ratio of however many Springs are grounded
 			FVector Force = Direction * ForwardInput * OwnerTank->GetForwardForce() * GroundedSpringRatio;
-			//Calculate location to add the force. The offsets add a "bounciness" to accelerating and braking
+			//Calculate location to add the force. The offsets add a "bounciness" 
+			//to accelerating and braking by moving the force location slightly away from the local center
 			FVector ForceOffset = OwnerTank->GetForwardForceOffset();
 			FVector Location = OwnerTank->GetActorLocation() +
 				ForceOffset.X * ForwardVector +
@@ -88,10 +86,8 @@ void ATankController::PlayerTick(float DeltaTime)
 		//Get vector from the center of the viewport to the mouse position
 		FVector2D MouseVector = FVector2D(PawnPosition.X - MouseX, PawnPosition.Y - MouseY);
 
-		//2D vector math to calculate angle
-		float Dot = ForwardVector.X * MouseVector.X + ForwardVector.Y * MouseVector.Y;	//Dot Product, proportional to cosine, or X
-		float Det = ForwardVector.X * MouseVector.Y - ForwardVector.Y * MouseVector.X;	//Determinate, proportional to sine, or Y
-		float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Det, Dot)) - 90;	//Atan2(sin, cos), or Atan2(Y, X). -90 to move the Yaw 90 degrees counter clockwise
+		//2D vector math to calculate Yaw's angle
+		float Yaw = FMath::RadiansToDegrees(FMath::Atan2(MouseVector.Y, MouseVector.X)) - 90;	//-90 to move the Yaw 90 degrees counter clockwise
 
 		OwnerTank->SetRelativeGunRotation(FRotator(0.0f, Yaw, 0.0f));
 	}

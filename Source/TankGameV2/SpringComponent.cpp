@@ -33,27 +33,6 @@ void USpringComponent::BeginPlay()
 	Owner->SetSimulatePhysics(true);
 }
 
-float USpringComponent::GetCompressionRatio()
-{
-	return PreviousCompressionRatio;
-}
-
-FVector USpringComponent::GetImpactPoint()
-{
-	return PreviousImpactPoint;
-}
-
-FVector USpringComponent::GetImpactNormal()
-{
-	return PreviousImpactNormal;
-}
-
-bool USpringComponent::IsGrounded()
-{
-	return Grounded;
-}
-
-
 // Called every frame
 void USpringComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
