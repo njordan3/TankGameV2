@@ -6,12 +6,18 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "SpringComponent.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ATank::ATank()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	MaxHealth = 100.0f;
+	CurrentHealth = MaxHealth;
+
+	FireRate = 0.25f;
 
 	SuspensionLength = 60.0f;
 	SpringCoefficient = 2000.0f;
@@ -27,6 +33,11 @@ ATank::ATank()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
+
+	bAlwaysRelevant = true; 
+	SetReplicateMovement(true);
+	bNetLoadOnClient = true;
+	bReplicates = true;
 
 	//Initialize Tank Body Static Mesh ============================================
 	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
@@ -59,6 +70,7 @@ ATank::ATank()
 		FRotator(-89.9f, 0.0f, 0.0f)
 	);
 	SpringArmComp->TargetArmLength = 3000.0f;
+	SpringArmComp->bDoCollisionTest = false;
 	SpringArmComp->bInheritPitch = false;
 	SpringArmComp->bInheritRoll = false;
 	SpringArmComp->bInheritYaw = false;
@@ -84,7 +96,7 @@ ATank::ATank()
 	BackLeftSpringComp->SetupAttachment(BodyStaticMesh);
 
 	//Take control of the default Player ==========================================
-	AutoPossessPlayer = EAutoReceiveInput::Player0;
+	//AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
 
 // Called when the game starts or when spawned
@@ -136,6 +148,63 @@ void ATank::BeginPlay()
 void ATank::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	//Replicate current health.
+	DOREPLIFETIME(ATank, CurrentHealth);
+}
+
+void ATank::OnRep_CurrentHealth()
+{
+	OnHealthUpdate();
+}
+
+void ATank::OnHealthUpdate()
+{
+	//Client-specific functionality
+	if (IsLocallyControlled())
+	{
+		FString HealthMessage = FString::Printf(TEXT("You now have %f health remaining."), CurrentHealth);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
+
+		if (CurrentHealth <= 0)
+		{
+			FString DeathMessage = FString::Printf(TEXT("You have been killed."));
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, DeathMessage);
+		}
+	}
+
+	//Server-specific functionality
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		FString HealthMessage = FString::Printf(TEXT("%s now has %f health remaining."), *GetFName().ToString(), CurrentHealth);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
+	}
+
+	//Functions that occur on all machines. 
+	/*
+		Any special functionality that should occur as a result of damage or death should be placed here.
+	*/
+}
+
+void ATank::SetCurrentHealth(float HealthValue)
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		CurrentHealth = FMath::Clamp(HealthValue, 0.f, MaxHealth);
+		OnHealthUpdate();
+	}
+}
+
+float ATank::TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	float DamageApplied = CurrentHealth - DamageTaken;
+	SetCurrentHealth(DamageApplied);
+	return DamageApplied;
 }
 
 FVector ATank::GetDirectedSuspensionNormal(float Direction)

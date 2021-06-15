@@ -28,9 +28,18 @@ public:
 		TSubclassOf<class ATankShell> ProjectileClass;
 
 protected:
-	// Function that handles firing projectiles.
-	UFUNCTION()
-		void FireShell();
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+		void StartShellFire();
+
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+		void StopShellFire();
+
+	//RPC function for spawning projectiles.
+	UFUNCTION(Server, Reliable)
+		void HandleShellFire();
+
+	bool bIsFiring;
+	FTimerHandle FiringTimer;
 
 	//Input variables
 	float ForwardInput;
@@ -41,5 +50,5 @@ protected:
 	void RotateBody(float AxisValue);
 
 private:
-	class ATank* OwnerTank;
+	class ATank* Owner;
 };

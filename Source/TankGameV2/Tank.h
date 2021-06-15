@@ -21,6 +21,16 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	void OnHealthUpdate();
+
+	UPROPERTY(EditDefaultsOnly, Category = "Health")
+		float MaxHealth;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentHealth)
+		float CurrentHealth;
+
+	UFUNCTION()
+		void OnRep_CurrentHealth();
 
 	UPROPERTY(EditAnywhere)
 		class USpringArmComponent* SpringArmComp;
@@ -55,29 +65,48 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		float DriftCoefficient;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Gameplay")
+		float FireRate;
+
 public:
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UFUNCTION(BlueprintPure, Category = "Health")
+		FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
+
+	UFUNCTION(BlueprintPure, Category = "Health")
+		FORCEINLINE float GetCurrentHealth() const { return CurrentHealth; }
+
+	UFUNCTION(BlueprintCallable, Category = "Health")
+		void SetCurrentHealth(float HealthValue);
+
+	UFUNCTION(BlueprintCallable, Category = "Health")
+		float TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	FORCEINLINE void SetRelativeGunRotation(FRotator Rotation) { GunStaticMesh->SetWorldRotation(Rotation); }
 
-	FORCEINLINE FRotator GetRelativeGunRotation() { return GunStaticMesh->GetRelativeRotation(); }
+	FORCEINLINE FRotator GetRelativeGunRotation() const { return GunStaticMesh->GetRelativeRotation(); }
 
-	FORCEINLINE float GetForwardForce() { return ForwardForce; }
+	FORCEINLINE float GetForwardForce() const { return ForwardForce; }
 
-	FORCEINLINE FVector GetForwardForceOffset() { return ForwardForceOffset; }
+	FORCEINLINE FVector GetForwardForceOffset() const { return ForwardForceOffset; }
 
-	FORCEINLINE float GetDriftCoefficient() { return DriftCoefficient; }
+	FORCEINLINE float GetDriftCoefficient() const { return DriftCoefficient; }
 
-	FORCEINLINE float GetTurnTorque() { return TurnTorque; }
+	FORCEINLINE float GetTurnTorque() const { return TurnTorque; }
+
+	FORCEINLINE float GetFireRate() const { return FireRate; }
 
 	FVector GetDirectedSuspensionNormal(float Direction = 0.0f);
 
 	float GetRatioOfGroundedSprings();
 
 	UPROPERTY(EditAnywhere)
-		UStaticMeshComponent* BodyStaticMesh;
+		class UStaticMeshComponent* BodyStaticMesh;
 
 	UPROPERTY(EditAnywhere)
-		UStaticMeshComponent* GunStaticMesh;
+		class UStaticMeshComponent* GunStaticMesh;
 
 	UPROPERTY(EditAnywhere)
 		class USpringComponent* FrontRightSpringComp;

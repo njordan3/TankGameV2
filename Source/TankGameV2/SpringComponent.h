@@ -24,10 +24,10 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	FORCEINLINE float GetCompressionRatio() { return PreviousCompressionRatio; }
-	FORCEINLINE FVector GetImpactPoint() { return PreviousImpactPoint; }
-	FORCEINLINE FVector GetImpactNormal() { return PreviousImpactNormal; }
-	FORCEINLINE bool IsGrounded() { return Grounded; }
+	FORCEINLINE float GetCompressionRatio() const { return PreviousCompressionRatio; }
+	FORCEINLINE FVector GetImpactPoint() const { return PreviousImpactPoint; }
+	FORCEINLINE FVector GetImpactNormal() const { return PreviousImpactNormal; }
+	FORCEINLINE bool IsGrounded() const { return Grounded; }
 
 	UPROPERTY(EditAnywhere)
 		float SuspensionLength;

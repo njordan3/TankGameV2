@@ -2,6 +2,12 @@
 
 
 #include "TankShell.h"
+#include "Tank.h"
+#include "Components/BoxComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+#include "GameFramework/DamageType.h"
+#include "Particles/ParticleSystem.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 ATankShell::ATankShell()
@@ -9,24 +15,32 @@ ATankShell::ATankShell()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	if (!RootComponent)
+	bReplicates = true;
+
+	//Initialize Tank Shell Collision Box =================================================
+	CollisionComp = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxComp"));
+	CollisionComp->InitBoxExtent(FVector(57.7f, 10.7f, 10.7f));
+	CollisionComp->BodyInstance.SetCollisionProfileName(TEXT("TankShell"));
+	CollisionComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
+	CollisionComp->SetSimulatePhysics(false);
+	RootComponent = CollisionComp;
+
+	if (GetLocalRole() == ROLE_Authority)
 	{
-		RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("ProjectileSceneComp"));
+		CollisionComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
 	}
 
-	if (!ShellMeshComp)
+	//Initialize Tank Shell Static Mesh ===================================================
+	ShellMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShellMeshComp"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> ShellMesh(TEXT("/Game/TankMeshes/TankShell.TankShell"));
+	if (ShellMesh.Succeeded())
 	{
-		ShellMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShellMeshComp"));
-		static ConstructorHelpers::FObjectFinder<UStaticMesh> ShellMesh(TEXT("/Game/TankMeshes/TankShell.TankShell"));
-		if (ShellMesh.Succeeded())
-		{
-			ShellMeshComp->SetStaticMesh(ShellMesh.Object);
-		}
-		ShellMeshComp->SetSimulatePhysics(false);
-		RootComponent = ShellMeshComp;
+		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
+	//ShellMeshComp->SetSimulatePhysics(false);
+	ShellMeshComp->SetupAttachment(RootComponent);
 
-	/*
+	/*//Initialize Tank Shell Material ======================================================
 	static ConstructorHelpers::FObjectFinder<UMaterial> ShellMaterial(TEXT("[ADD MATERIAL ASSET REFERENCE]"));
 	if (ShellMaterial.Succeeded())
 	{
@@ -37,31 +51,25 @@ ATankShell::ATankShell()
 	ShellMeshComp->SetupAttachment(RootComponent);
 	*/
 
-	if (!CollisionComp)
-	{
-		// Use a bpx as a simple collision representation.
-		CollisionComp = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxComp"));
-		// Set the box's dimensions
-		CollisionComp->InitBoxExtent(FVector(57.7f, 10.7f, 10.7f));
-		// Set the Shell's collision profile name to "TankShell".
-		CollisionComp->BodyInstance.SetCollisionProfileName(TEXT("TankShell"));
-		// Event called when component hits something.
-		CollisionComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
+	//Initialize Tank Shell Movement Component ============================================
+	ShellMovementComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ShellMovementComp"));
+	ShellMovementComp->SetUpdatedComponent(CollisionComp);
+	ShellMovementComp->InitialSpeed = 1500.0f;
+	ShellMovementComp->MaxSpeed = 1500.0f;
+	ShellMovementComp->bRotationFollowsVelocity = true;
+	ShellMovementComp->bShouldBounce = true;
+	ShellMovementComp->Bounciness = 0.3f;
+	ShellMovementComp->ProjectileGravityScale = 1.0f;
 
-		CollisionComp->SetSimulatePhysics(true);
-		CollisionComp->SetupAttachment(ShellMeshComp);
-	}
+	//Initialize Tank Shell Damage Type ===================================================
+	DamageType = UDamageType::StaticClass();
+	Damage = 10.0f;
 
-	if (!ShellMovementComp)
+	//Initialize Tank Shell Explosion Effect ==============================================
+	static ConstructorHelpers::FObjectFinder<UParticleSystem> DefaultExplosionEffect(TEXT("/Game/StarterContent/Particles/P_Explosion.P_Explosion"));
+	if (DefaultExplosionEffect.Succeeded())
 	{
-		ShellMovementComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ShellMovementComp"));
-		ShellMovementComp->SetUpdatedComponent(ShellMeshComp);
-		ShellMovementComp->InitialSpeed = 1000.0f;
-		ShellMovementComp->MaxSpeed = 1000.0f;
-		ShellMovementComp->bRotationFollowsVelocity = true;
-		ShellMovementComp->bShouldBounce = true;
-		ShellMovementComp->Bounciness = 0.3f;
-		ShellMovementComp->ProjectileGravityScale = 0.0f;
+		ExplosionEffect = DefaultExplosionEffect.Object;
 	}
 
 	InitialLifeSpan = 3.0f;
@@ -90,10 +98,21 @@ void ATankShell::FireInDirection(FVector& Direction)
 // Function that is called when the projectile hits something.
 void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (OtherActor != this && OtherComponent->IsSimulatingPhysics())
+	if (OtherComponent->IsSimulatingPhysics())
 	{
 		OtherComponent->AddImpulseAtLocation(ShellMovementComp->Velocity * 100.0f, Hit.ImpactPoint);
 	}
 
+	if (OtherActor->StaticClass() == ATank::StaticClass())
+	{
+		UGameplayStatics::ApplyPointDamage(OtherActor, Damage, NormalImpulse, Hit, GetInstigator()->Controller, this, DamageType);
+	}
+
 	Destroy();
+}
+
+void ATankShell::Destroyed()
+{
+	FVector SpawnLocation = GetActorLocation();
+	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, SpawnLocation, FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
 }

@@ -10,13 +10,15 @@ ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : 
 {
 	ProjectileClass = ATankShell::StaticClass();
 
+	bIsFiring = false;
+
 	bShowMouseCursor = true;
 };
 
 void ATankController::BeginPlay() {
 	Super::BeginPlay();
 
-	OwnerTank = Cast<ATank>(GetPawn());
+	Owner = Cast<ATank>(GetPawn());
 }
 
 // Called to bind functionality to input
@@ -29,7 +31,7 @@ void ATankController::SetupInputComponent()
 	InputComponent->BindAxis("MoveForward", this, &ATankController::MoveForward);
 	InputComponent->BindAxis("RotateBody", this, &ATankController::RotateBody);
 
-	InputComponent->BindAction("FireShell", IE_Pressed, this, &ATankController::FireShell);
+	InputComponent->BindAction("FireShell", IE_Pressed, this, &ATankController::StartShellFire);
 
 	check(GEngine != nullptr);
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Tank Controls Initialized"));
@@ -39,16 +41,16 @@ void ATankController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
 
-	float GroundedSpringRatio = OwnerTank->GetRatioOfGroundedSprings();
-	FVector ForwardVector = OwnerTank->GetActorForwardVector();
-	FVector RightVector = OwnerTank->GetActorRightVector();
-	FVector UpVector = OwnerTank->GetActorUpVector();
+	float GroundedSpringRatio = Owner->GetRatioOfGroundedSprings();
+	FVector ForwardVector = Owner->GetActorForwardVector();
+	FVector RightVector = Owner->GetActorRightVector();
+	FVector UpVector = Owner->GetActorUpVector();
 
 	{	//Body Rotation
 		if (RotationInput != 0.0f && GroundedSpringRatio > 0.0f)
 		{	
-			FVector Torque = UpVector * RotationInput * OwnerTank->GetTurnTorque() * GroundedSpringRatio;
-			OwnerTank->BodyStaticMesh->AddTorqueInDegrees(Torque);
+			FVector Torque = UpVector * RotationInput * Owner->GetTurnTorque() * GroundedSpringRatio;
+			Owner->BodyStaticMesh->AddTorqueInDegrees(Torque);
 		}
 	}
 
@@ -56,25 +58,25 @@ void ATankController::PlayerTick(float DeltaTime)
 		if (ForwardInput != 0.0f && GroundedSpringRatio > 0.0f)
 		{
 			//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
-			FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, OwnerTank->GetDirectedSuspensionNormal());
+			FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, Owner->GetDirectedSuspensionNormal());
 			//Calculate the force and reduce it by the ratio of however many Springs are grounded
-			FVector Force = Direction * ForwardInput * OwnerTank->GetForwardForce() * GroundedSpringRatio;
+			FVector Force = Direction * ForwardInput * Owner->GetForwardForce() * GroundedSpringRatio;
 			//Calculate location to add the force. The offsets add a "bounciness" 
 			//to accelerating and braking by moving the force location slightly away from the local center
-			FVector ForceOffset = OwnerTank->GetForwardForceOffset();
-			FVector Location = OwnerTank->GetActorLocation() +
+			FVector ForceOffset = Owner->GetForwardForceOffset();
+			FVector Location = Owner->GetActorLocation() +
 				ForceOffset.X * ForwardVector +
 				ForceOffset.Y * RightVector +
 				ForceOffset.Z * UpVector;
 
-			OwnerTank->BodyStaticMesh->AddForceAtLocation(Force, Location);
+			Owner->BodyStaticMesh->AddForceAtLocation(Force, Location);
 		}
 	}
 
 	{	//Counteract Drifting
-		float DriftAmount = FVector::DotProduct(OwnerTank->GetVelocity(), RightVector);
-		FVector AntiDriftForce = RightVector * -DriftAmount * OwnerTank->GetDriftCoefficient();
-		OwnerTank->BodyStaticMesh->AddImpulse(AntiDriftForce);
+		float DriftAmount = FVector::DotProduct(Owner->GetVelocity(), RightVector);
+		FVector AntiDriftForce = RightVector * -DriftAmount * Owner->GetDriftCoefficient();
+		Owner->BodyStaticMesh->AddImpulse(AntiDriftForce);
 	}
 
 	{	//Get the angle between mouse position and the current forward vector and rotate the Gun mesh
@@ -89,7 +91,7 @@ void ATankController::PlayerTick(float DeltaTime)
 		//2D vector math to calculate Yaw's angle
 		float Yaw = FMath::RadiansToDegrees(FMath::Atan2(MouseVector.Y, MouseVector.X)) - 90;	//-90 to move the Yaw 90 degrees counter clockwise
 
-		OwnerTank->SetRelativeGunRotation(FRotator(0.0f, Yaw, 0.0f));
+		Owner->SetRelativeGunRotation(FRotator(0.0f, Yaw, 0.0f));
 	}
 }
 
@@ -103,29 +105,40 @@ void ATankController::RotateBody(float Value)
 	RotationInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
 }
 
-void ATankController::FireShell()
+void ATankController::StartShellFire()
 {
-	// Attempt to fire a projectile.
-	if (ProjectileClass)
+	if (!bIsFiring)
 	{
-		FRotator MuzzleRotation = OwnerTank->GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
-		FVector MuzzleLocation = OwnerTank->GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
-
+		bIsFiring = true;
 		UWorld* World = GetWorld();
-		if (World)
-		{
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = this;
-			SpawnParams.Instigator = GetInstigator();
-
-			// Spawn the projectile at the muzzle.
-			ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-			if (Projectile)
-			{
-				// Set the projectile's initial trajectory.
-				FVector LaunchDirection = MuzzleRotation.Vector();
-				Projectile->FireInDirection(LaunchDirection);
-			}
-		}
+		World->GetTimerManager().SetTimer(FiringTimer, this, &ATankController::StopShellFire, Owner->GetFireRate(), false);
+		HandleShellFire();
 	}
+}
+
+void ATankController::StopShellFire()
+{
+	bIsFiring = false;
+}
+
+void ATankController::HandleShellFire_Implementation()
+{
+	FRotator MuzzleRotation = Owner->GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
+	FVector MuzzleLocation = Owner->GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
+
+	UWorld* World = GetWorld();
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = GetInstigator();
+
+	// Spawn the projectile at the muzzle.
+	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
+	
+	if (Projectile)
+	{
+		// Set the projectile's initial trajectory.
+		FVector Direction = MuzzleRotation.Vector();
+		Projectile->FireInDirection(Direction);
+	}
+	
 }

@@ -24,8 +24,6 @@ USpringComponent::USpringComponent()
 void USpringComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	//Owner = Cast<UPrimitiveComponent>(GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass())[0]);
 
 	TArray<UPrimitiveComponent*> OwnerComponents;
 	GetOwner()->GetComponents<UPrimitiveComponent>(OwnerComponents, false);

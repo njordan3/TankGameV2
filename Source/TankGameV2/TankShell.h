@@ -4,8 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Components/BoxComponent.h"
-#include "GameFramework/ProjectileMovementComponent.h"
 #include "TankShell.generated.h"
 
 UCLASS()
@@ -21,29 +19,43 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void Destroyed() override;
+
+	// Function that is called when the projectile hits something.
+	UFUNCTION(Category = "Projectile")
+		void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Function that is called when the projectile hits something.
-	UFUNCTION()
-		void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
-
 	// Box collision component.
-	UPROPERTY(VisibleDefaultsOnly, Category = "Projectile")
-		UBoxComponent* CollisionComp;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
+		class UBoxComponent* CollisionComp;
 
 	// Projectile mesh
-	UPROPERTY(VisibleDefaultsOnly, Category = "Projectile")
-		UStaticMeshComponent* ShellMeshComp;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
+		class UStaticMeshComponent* ShellMeshComp;
 
 	// Projectile material
-	UPROPERTY(VisibleDefaultsOnly, Category = "Projectile")
-		UMaterialInstanceDynamic* ShellMaterialInstance;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
+		class UMaterialInstanceDynamic* ShellMaterialInstance;
 
 	// Projectile movement component.
-	UPROPERTY(VisibleAnywhere, Category = "Movement")
-		UProjectileMovementComponent* ShellMovementComp;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+		class UProjectileMovementComponent* ShellMovementComp;
+
+	// Particle used when the projectile impacts against another object and explodes.
+	UPROPERTY(EditAnywhere, Category = "Effects")
+		class UParticleSystem* ExplosionEffect;
+
+	//The damage type and damage that will be done by this projectile
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
+		TSubclassOf<class UDamageType> DamageType;
+
+	//The damage dealt by this projectile.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
+		float Damage;
 
 	void FireInDirection(FVector& Direction);
 };
