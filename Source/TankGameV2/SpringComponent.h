@@ -38,11 +38,11 @@ public:
 	UPROPERTY(EditAnywhere)
 		float DampingCoefficient;
 
+	bool Grounded;
 protected:
 	UPrimitiveComponent* Owner;
 
 private:
-	bool Grounded;
 	float PreviousSuspensionLengthDelta;
 	float PreviousCompressionRatio;
 	FVector PreviousImpactPoint;

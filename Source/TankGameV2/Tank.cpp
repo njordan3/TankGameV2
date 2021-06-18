@@ -279,7 +279,7 @@ FVector ATank::GetDirectedSuspensionNormal(float Direction)
 		SuspensionNormals.Push(BackRightSpringComp->GetImpactNormal());
 		SuspensionNormals.Push(BackLeftSpringComp->GetImpactNormal());
 	}
-	
+
 	return UKismetMathLibrary::GetVectorArrayAverage(SuspensionNormals).GetSafeNormal();
 }
 

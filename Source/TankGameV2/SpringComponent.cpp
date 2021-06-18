@@ -50,6 +50,16 @@ void USpringComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		DrawDebugLine(World, Start, End, FColor::Green, false, 0.01f, 0, 1);
 
 		Grounded = World->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
+
+		//Check if the impact point is a wall, and set Grounded to false so it isn't considered in force calculations
+		FRotator ImpactRotation = HitResult.ImpactNormal.Rotation();
+		float Tolerance = 0.01F;
+		if (FMath::IsNearlyZero(ImpactRotation.Pitch, Tolerance) || FMath::IsNearlyZero(ImpactRotation.Yaw, Tolerance))
+		{
+			Grounded = false;
+			return;
+		}
+
 		if (Grounded)
 		{
 			float SuspensionLengthDelta = HitResult.Distance - SuspensionLength;
