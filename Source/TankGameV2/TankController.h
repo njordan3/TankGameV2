@@ -21,11 +21,11 @@ public:
 
 	virtual void SetupInputComponent() override;
 
-	virtual void PlayerTick(float DeltaTime) override;
+	virtual void Tick(float DeltaTime) override;
 
 	// Projectile class to spawn.
-	UPROPERTY(EditDefaultsOnly, Category = "TankShell")
-		TSubclassOf<class ATankShell> ProjectileClass;
+	//UPROPERTY(EditDefaultsOnly, Category = "TankShell")
+	//	TSubclassOf<class ATankShell> ProjectileClass;
 
 protected:
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
@@ -35,8 +35,8 @@ protected:
 		void StopShellFire();
 
 	//RPC function for spawning projectiles.
-	UFUNCTION(Server, Reliable)
-		void HandleShellFire();
+	//UFUNCTION(Server, Reliable)
+	//	void HandleShellFire();
 
 	bool bIsFiring;
 	FTimerHandle FiringTimer;
@@ -48,7 +48,4 @@ protected:
 	//Input functions
 	void MoveForward(float AxisValue);
 	void RotateBody(float AxisValue);
-
-private:
-	class ATank* Owner;
 };

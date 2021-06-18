@@ -68,9 +68,29 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Gameplay")
 		float FireRate;
 
+	// Projectile class to spawn.
+	UPROPERTY(EditDefaultsOnly, Category = "TankShell")
+		TSubclassOf<class ATankShell> ProjectileClass;
+
 public:
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UFUNCTION(Server, Reliable)
+		void MoveForward(float ForwardInput);
+
+	UFUNCTION(Server, Reliable)
+		void RotateBody(float RotationInput);
+
+	UFUNCTION(Server, Reliable)
+		void SetGunRotation(FVector MouseLocation, FVector MouseDirection);
+
+	UFUNCTION(Server, Reliable)
+		void CounteractDrifting();
+
+	//RPC function for spawning projectiles.
+	UFUNCTION(Server, Reliable)
+		void HandleShellFire();
 
 	UFUNCTION(BlueprintPure, Category = "Health")
 		FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
@@ -84,7 +104,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Health")
 		float TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
-	FORCEINLINE void SetRelativeGunRotation(FRotator Rotation) { GunStaticMesh->SetWorldRotation(Rotation); }
+	//FORCEINLINE void SetRelativeGunRotation(FRotator Rotation) { GunStaticMesh->SetWorldRotation(Rotation); }
 
 	FORCEINLINE FRotator GetRelativeGunRotation() const { return GunStaticMesh->GetRelativeRotation(); }
 
@@ -100,7 +120,7 @@ public:
 
 	FVector GetDirectedSuspensionNormal(float Direction = 0.0f);
 
-	float GetRatioOfGroundedSprings();
+	float GetGroundedSpringRatio();
 
 	UPROPERTY(EditAnywhere)
 		class UStaticMeshComponent* BodyStaticMesh;

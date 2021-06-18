@@ -59,7 +59,7 @@ ATankShell::ATankShell()
 	ShellMovementComp->bRotationFollowsVelocity = true;
 	ShellMovementComp->bShouldBounce = true;
 	ShellMovementComp->Bounciness = 0.3f;
-	ShellMovementComp->ProjectileGravityScale = 1.0f;
+	ShellMovementComp->ProjectileGravityScale = 0.1f;
 
 	//Initialize Tank Shell Damage Type ===================================================
 	DamageType = UDamageType::StaticClass();
@@ -72,7 +72,7 @@ ATankShell::ATankShell()
 		ExplosionEffect = DefaultExplosionEffect.Object;
 	}
 
-	InitialLifeSpan = 3.0f;
+	InitialLifeSpan = 30.0f;
 }
 
 // Called when the game starts or when spawned
@@ -100,7 +100,8 @@ void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UP
 {
 	if (OtherComponent->IsSimulatingPhysics())
 	{
-		OtherComponent->AddImpulseAtLocation(ShellMovementComp->Velocity * 100.0f, Hit.ImpactPoint);
+		//OtherComponent->AddImpulseAtLocation(ShellMovementComp->Velocity * 10.0f, Hit.ImpactPoint);
+		OtherComponent->AddImpulse(ShellMovementComp->Velocity * 10.0f);
 	}
 
 	if (OtherActor->StaticClass() == ATank::StaticClass())

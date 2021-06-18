@@ -2,6 +2,7 @@
 
 #include "Tank.h"
 #include "Containers/Array.h"
+#include "TankShell.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -14,6 +15,8 @@ ATank::ATank()
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	ProjectileClass = ATankShell::StaticClass();
+
 	MaxHealth = 100.0f;
 	CurrentHealth = MaxHealth;
 
@@ -23,9 +26,9 @@ ATank::ATank()
 	SpringCoefficient = 2000.0f;
 	DampingCoefficient = 100.0f;
 
-	ForwardForce = 200000.0f;
+	ForwardForce = 500.0f;
 	ForwardForceOffset = FVector(10.0f, 0.0f, -10.0f);
-	TurnTorque = 500000000.0f;
+	TurnTorque = 15000.0f;
 	AngularDamping = 1.5f;
 	LinearDamping = 0.5f;
 	DriftCoefficient = 1.0f;
@@ -41,12 +44,13 @@ ATank::ATank()
 
 	//Initialize Tank Body Static Mesh ============================================
 	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
-	BodyStaticMesh->SetupAttachment(RootComponent);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/TankMeshes/TankBody.TankBody"));
 	UStaticMesh* BodyAsset = BodyMesh.Object;
 	BodyStaticMesh->SetStaticMesh(BodyAsset);
 	BodyStaticMesh->SetAngularDamping(AngularDamping);
 	BodyStaticMesh->SetLinearDamping(LinearDamping);
+	//BodyStaticMesh->SetupAttachment(RootComponent);
+	RootComponent = BodyStaticMesh;
 
 	//Change Mass Properties
 	DefaultCenterOfMass = BodyStaticMesh->GetCenterOfMass();
@@ -60,7 +64,8 @@ ATank::ATank()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
 	UStaticMesh* GunAsset = GunMesh.Object;
 	GunStaticMesh->SetStaticMesh(GunAsset);
-	GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body
+	GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body'
+	GunStaticMesh->SetIsReplicated(true);
 
 	//Initialize Spring Arm Component =============================================
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
@@ -141,7 +146,7 @@ void ATank::BeginPlay()
 	BackLeftSpringComp->DampingCoefficient = DampingCoefficient;
 
 	check(GEngine != nullptr);
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Tank Initialized"));
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Tank Initialized %f"), BodyStaticMesh->GetMass()));
 }
 
 // Called every frame
@@ -156,6 +161,58 @@ void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimePr
 
 	//Replicate current health.
 	DOREPLIFETIME(ATank, CurrentHealth);
+}
+
+void ATank::MoveForward_Implementation(float ForwardInput)
+{
+	FVector ForwardVector = GetActorForwardVector();
+	FVector RightVector = GetActorRightVector();
+	FVector UpVector = GetActorUpVector();
+
+	//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
+	FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
+	//Calculate the force and reduce it by the ratio of however many Springs are grounded
+	FVector Force = Direction * ForwardInput * ForwardForce * GetGroundedSpringRatio();
+	//Calculate location to add the force. The offsets add a "bounciness" 
+	//to accelerating and braking by moving the force location slightly away from the local center
+	FVector Location = GetActorLocation() +
+		ForwardForceOffset.X * ForwardVector +
+		ForwardForceOffset.Y * RightVector +
+		ForwardForceOffset.Z * UpVector;
+
+	BodyStaticMesh->AddImpulseAtLocation(Force, Location);
+}
+
+void ATank::RotateBody_Implementation(float RotationInput)
+{
+	FVector Torque = GetActorUpVector() * RotationInput * TurnTorque * GetGroundedSpringRatio();
+	BodyStaticMesh->AddAngularImpulse(Torque);
+}
+
+void ATank::SetGunRotation_Implementation(FVector MouseLocation, FVector MouseDirection)
+{
+	MouseDirection.Z = 0.f;
+	FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(MouseDirection, GetActorUpVector());
+	GunStaticMesh->SetWorldRotation(Direction.Rotation());
+
+	//FVector Origin = GetActorLocation();
+	//float d = FVector::DotProduct((FVector(0, 0, Origin.Z) - MouseLocation), FVector::UpVector)
+	//	/ FVector::DotProduct(MouseDirection, FVector::UpVector);
+	//FVector GroundPoint = MouseLocation + MouseDirection * d;
+	//FVector FinalAim = GroundPoint - Origin;
+	//FinalAim.Z = 0.f;
+	//FinalAim.Normalize();
+
+	//GunStaticMesh->SetWorldRotation(FinalAim.Rotation());
+}
+
+void ATank::CounteractDrifting_Implementation()
+{
+	FVector RightVector = GetActorRightVector();
+
+	float DriftAmount = FVector::DotProduct(GetVelocity(), RightVector);
+	FVector AntiDriftForce = RightVector * -DriftAmount * DriftCoefficient;
+	BodyStaticMesh->AddImpulse(AntiDriftForce);
 }
 
 void ATank::OnRep_CurrentHealth()
@@ -226,7 +283,7 @@ FVector ATank::GetDirectedSuspensionNormal(float Direction)
 	return UKismetMathLibrary::GetVectorArrayAverage(SuspensionNormals).GetSafeNormal();
 }
 
-float ATank::GetRatioOfGroundedSprings()
+float ATank::GetGroundedSpringRatio()
 {
 	return (
 		FrontRightSpringComp->IsGrounded() + 
@@ -234,4 +291,26 @@ float ATank::GetRatioOfGroundedSprings()
 		BackRightSpringComp->IsGrounded() +
 		BackLeftSpringComp->IsGrounded()
 	) / 4.0f;
+}
+
+void ATank::HandleShellFire_Implementation()
+{
+	FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
+	FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
+
+	UWorld* World = GetWorld();
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = GetInstigator();
+
+	// Spawn the projectile at the muzzle.
+	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
+
+	if (Projectile)
+	{
+		// Set the projectile's initial trajectory.
+		FVector Direction = MuzzleRotation.Vector();
+		Projectile->FireInDirection(Direction);
+	}
+
 }

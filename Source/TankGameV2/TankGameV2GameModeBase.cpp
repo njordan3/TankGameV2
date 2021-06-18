@@ -22,3 +22,8 @@ void ATankGameV2GameModeBase::StartPlay()
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("TankGameV2 Gamemode Initialized!"));
 
 }
+
+void ATankGameV2GameModeBase::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+}

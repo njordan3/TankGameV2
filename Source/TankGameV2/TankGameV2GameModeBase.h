@@ -17,4 +17,6 @@ class TANKGAMEV2_API ATankGameV2GameModeBase : public AGameModeBase
 	ATankGameV2GameModeBase();
 
 	virtual void StartPlay() override;
+
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 };
