@@ -8,7 +8,6 @@
 
 ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	SetActorTickEnabled(true);
 	PrimaryActorTick.bCanEverTick = true;
 
 	//ProjectileClass = ATankShell::StaticClass();

@@ -26,7 +26,7 @@ ATank::ATank()
 	SpringCoefficient = 2000.0f;
 	DampingCoefficient = 100.0f;
 
-	ForwardForce = 500.0f;
+	ForwardForce = 500.0f;	
 	ForwardForceOffset = FVector(10.0f, 0.0f, -10.0f);
 	TurnTorque = 15000.0f;
 	AngularDamping = 1.5f;
@@ -38,18 +38,18 @@ ATank::ATank()
 	bUseControllerRotationRoll = false;
 
 	bAlwaysRelevant = true; 
-	SetReplicateMovement(true);
 	bNetLoadOnClient = true;
-	bReplicates = true;
 
 	//Initialize Tank Body Static Mesh ============================================
 	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/TankMeshes/TankBody.TankBody"));
 	UStaticMesh* BodyAsset = BodyMesh.Object;
 	BodyStaticMesh->SetStaticMesh(BodyAsset);
+	BodyStaticMesh->SetSimulatePhysics(true);
+	BodyStaticMesh->bApplyImpulseOnDamage = false;
+	BodyStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
 	BodyStaticMesh->SetAngularDamping(AngularDamping);
 	BodyStaticMesh->SetLinearDamping(LinearDamping);
-	//BodyStaticMesh->SetupAttachment(RootComponent);
 	RootComponent = BodyStaticMesh;
 
 	//Change Mass Properties
@@ -99,9 +99,6 @@ ATank::ATank()
 	//Initialize Back Left Spring Component =======================================
 	BackLeftSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("BackLeftSpringComponent"));
 	BackLeftSpringComp->SetupAttachment(BodyStaticMesh);
-
-	//Take control of the default Player ==========================================
-	//AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
 
 // Called when the game starts or when spawned
@@ -259,9 +256,22 @@ void ATank::SetCurrentHealth(float HealthValue)
 
 float ATank::TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	float DamageApplied = CurrentHealth - DamageTaken;
-	SetCurrentHealth(DamageApplied);
-	return DamageApplied;
+	float ActualDamage = Super::TakeDamage(DamageTaken, DamageEvent, nullptr, DamageCauser);
+
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("%d %d"), GetLocalRole(), GetRemoteRole()));
+
+	if (EventInstigator == nullptr)
+	{
+		float DamageApplied = CurrentHealth - ActualDamage;
+		SetCurrentHealth(DamageApplied);
+		return DamageApplied;
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("NULL"));
+		return CurrentHealth;
+	}
+	
 }
 
 FVector ATank::GetDirectedSuspensionNormal(float Direction)
@@ -269,7 +279,8 @@ FVector ATank::GetDirectedSuspensionNormal(float Direction)
 	TArray<FVector> SuspensionNormals;
 
 	//Consider Front
-	if (Direction >= 0.0f) {
+	if (Direction >= 0.0f) 
+	{
 		SuspensionNormals.Push(FrontRightSpringComp->GetImpactNormal());
 		SuspensionNormals.Push(FrontLeftSpringComp->GetImpactNormal());
 	}
@@ -301,7 +312,7 @@ void ATank::HandleShellFire_Implementation()
 	UWorld* World = GetWorld();
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
-	SpawnParams.Instigator = GetInstigator();
+	SpawnParams.Instigator = this;
 
 	// Spawn the projectile at the muzzle.
 	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);

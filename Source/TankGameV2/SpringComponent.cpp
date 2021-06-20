@@ -28,7 +28,7 @@ void USpringComponent::BeginPlay()
 	TArray<UPrimitiveComponent*> OwnerComponents;
 	GetOwner()->GetComponents<UPrimitiveComponent>(OwnerComponents, false);
 	Owner = OwnerComponents[0];
-	Owner->SetSimulatePhysics(true);
+	//Owner->SetSimulatePhysics(true);
 }
 
 // Called every frame
