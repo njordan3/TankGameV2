@@ -14,6 +14,13 @@ class TANKGAMEV2_API ATankShellExplosion : public AActor
 {
 	GENERATED_BODY()
 	
+public:
+	ATankShellExplosion();
+
+	void FireImpulse();
+
 protected:
 	virtual void BeginPlay() override;
+
+	UStaticMeshComponent* PrimitiveComp;
 };

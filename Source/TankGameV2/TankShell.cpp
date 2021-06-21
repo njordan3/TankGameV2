@@ -19,17 +19,6 @@ ATankShell::ATankShell()
 
 	bReplicates = true;
 
-	//Initialize Tank Shell Collision Box =================================================
-	CollisionComp = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxComp"));
-	SetRootComponent(CollisionComp);
-	CollisionComp->InitBoxExtent(FVector(57.7f, 10.7f, 10.7f));
-	CollisionComp->BodyInstance.SetCollisionProfileName(TEXT("TankShell"));
-
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		CollisionComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
-	}
-
 	//Initialize Tank Shell Static Mesh ===================================================
 	ShellMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShellMeshComp"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> ShellMesh(TEXT("/Game/TankMeshes/TankShell.TankShell"));
@@ -37,7 +26,12 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
-	ShellMeshComp->SetupAttachment(RootComponent);
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
+	}
+	SetRootComponent(ShellMeshComp);
 
 	/*//Initialize Tank Shell Material ======================================================
 	static ConstructorHelpers::FObjectFinder<UMaterial> ShellMaterial(TEXT("[ADD MATERIAL ASSET REFERENCE]"));
@@ -52,7 +46,7 @@ ATankShell::ATankShell()
 
 	//Initialize Tank Shell Movement Component ============================================
 	ShellMovementComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ShellMovementComp"));
-	//ShellMovementComp->SetUpdatedComponent(CollisionComp);
+	//ShellMovementComp->SetUpdatedComponent(ShellMeshComp);
 	ShellMovementComp->InitialSpeed = 1500.0f;
 	ShellMovementComp->MaxSpeed = 1500.0f;
 	ShellMovementComp->bRotationFollowsVelocity = true;
@@ -77,13 +71,13 @@ ATankShell::ATankShell()
 
 	//Initialize Tank Shell Explosion Force ===============================================
 	ExplosionForce = CreateDefaultSubobject<URadialForceComponent>(TEXT("ExplosionEffect"));
-	ExplosionForce->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-	//ExplosionForce->AddCollisionChannelToAffect(ECC_Visibility);
+	ExplosionForce->SetupAttachment(RootComponent);
+	//ExplosionForce->AddShellMeshChannelToAffect(ECC_Visibility);
 	//ExplosionForce->AddObjectTypeToAffect((EObjectTypeQuery)ECC_WorldDynamic);
 	//ExplosionForce->AddObjectTypeToAffect((EObjectTypeQuery)ECC_PhysicsBody);
 	ExplosionForce->Radius = DamageOuterRadius;
-	ExplosionForce->ForceStrength = 100000000000.0f;
-	ExplosionForce->ImpulseStrength = 100000000000.0f;
+	ExplosionForce->ForceStrength = 100000.0f;
+	ExplosionForce->ImpulseStrength = 100000.0f;
 
 	InitialLifeSpan = 30.0f;
 }
@@ -118,32 +112,23 @@ void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UP
 		//	OtherComponent->AddImpulse(ShellMovementComp->Velocity * 10.0f);
 		//}
 
-		//SetRootComponent(ShellMeshComp);
+		//SetRootComponent(ExplosionForce);
+		//ExplosionForce->SetWorldLocation(Hit.ImpactPoint);
 
-		//CollisionComp->DestroyComponent();
 		//ShellMeshComp->DestroyComponent();
+
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, GetActorLocation().ToString());
 		//ExplosionForce->FireImpulse();
 
-		ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Hit.ImpactPoint, GetActorRotation());
+		FVector Location = GetActorLocation();
+		FRotator Rotation = GetActorRotation();
+		ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
 
 		//UGameplayStatics::ApplyPointDamage(OtherActor, Damage, NormalImpulse, Hit, GetInstigatorController(), this, DamageType);
-		UGameplayStatics::ApplyRadialDamageWithFalloff(this, Damage, MinimumDamage, Hit.ImpactPoint, 
-			DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), this, GetInstigatorController(), ECC_Visibility);
+		//UGameplayStatics::ApplyRadialDamageWithFalloff(this, Damage, MinimumDamage, Hit.ImpactPoint, 
+		//	DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), this, GetInstigatorController(), ECC_Visibility);
 	}
+	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, Hit.ImpactPoint, FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
 
 	Destroy();
-}
-
-void ATankShell::Destroyed()
-{
-	//if (GetLocalRole() == ROLE_Authority)
-	//{
-	//	SetRootComponent(ShellMeshComp);
-	//
-	//	CollisionComp->DestroyComponent();
-	//	ShellMeshComp->DestroyComponent();
-	//	ExplosionForce->FireImpulse();
-	//}
-	FVector SpawnLocation = GetActorLocation();
-	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, SpawnLocation, FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
 }

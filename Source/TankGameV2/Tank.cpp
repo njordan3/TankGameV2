@@ -50,7 +50,7 @@ ATank::ATank()
 	BodyStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
 	BodyStaticMesh->SetAngularDamping(AngularDamping);
 	BodyStaticMesh->SetLinearDamping(LinearDamping);
-	RootComponent = BodyStaticMesh;
+	SetRootComponent(BodyStaticMesh);
 
 	//Change Mass Properties
 	DefaultCenterOfMass = BodyStaticMesh->GetCenterOfMass();
@@ -258,8 +258,6 @@ float ATank::TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEven
 {
 	float ActualDamage = Super::TakeDamage(DamageTaken, DamageEvent, nullptr, DamageCauser);
 
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("%d %d"), GetLocalRole(), GetRemoteRole()));
-
 	if (EventInstigator == nullptr)
 	{
 		float DamageApplied = CurrentHealth - ActualDamage;
@@ -313,6 +311,7 @@ void ATank::HandleShellFire_Implementation()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
 
 	// Spawn the projectile at the muzzle.
 	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);

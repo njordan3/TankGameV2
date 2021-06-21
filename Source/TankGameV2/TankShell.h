@@ -19,8 +19,6 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	virtual void Destroyed() override;
-
 	// Function that is called when the projectile hits something.
 	UFUNCTION(Category = "Projectile")
 		void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
@@ -28,10 +26,6 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
-	// Box collision component.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
-		class UBoxComponent* CollisionComp;
 
 	// Projectile mesh
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
