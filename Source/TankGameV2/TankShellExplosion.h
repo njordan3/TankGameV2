@@ -17,10 +17,8 @@ class TANKGAMEV2_API ATankShellExplosion : public AActor
 public:
 	ATankShellExplosion();
 
-	void FireImpulse();
+	void FireImpulse(float Radius = 400.f, float ImpulseForce = 500.f);
 
 protected:
-	virtual void BeginPlay() override;
-
 	UStaticMeshComponent* PrimitiveComp;
 };

@@ -45,19 +45,6 @@ void ATankController::Tick(float DeltaTime)
 
 	if (OwnerTank != nullptr && IsLocalController())
 	{
-		//Body Rotation
-		if (RotationInput != 0.0f)
-		{
-			OwnerTank->RotateBody(RotationInput);
-		}
-
-		//Forward Movement
-		if (ForwardInput != 0.0f)
-		{
-			OwnerTank->MoveForward(ForwardInput);
-			OwnerTank->CounteractDrifting();
-		}
-
 		//Gun Rotation
 		FVector MouseLocation;
 		FVector MouseDirection;
@@ -71,11 +58,34 @@ void ATankController::Tick(float DeltaTime)
 void ATankController::MoveForward(float Value)
 {
 	ForwardInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
+
+	ATank* OwnerTank = Cast<ATank>(GetPawn());
+
+	if (OwnerTank != nullptr && IsLocalController())
+	{
+		//Forward Movement
+		if (ForwardInput != 0.0f)
+		{
+			OwnerTank->MoveForward(ForwardInput);
+			OwnerTank->CounteractDrifting();
+		}
+	}
 }
 
 void ATankController::RotateBody(float Value)
 {
 	RotationInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
+
+	ATank* OwnerTank = Cast<ATank>(GetPawn());
+
+	if (OwnerTank != nullptr && IsLocalController())
+	{
+		//Body Rotation
+		if (RotationInput != 0.0f)
+		{
+			OwnerTank->RotateBody(RotationInput);
+		}
+	}
 }
 
 void ATankController::StartShellFire()

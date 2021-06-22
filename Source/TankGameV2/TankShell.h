@@ -43,9 +43,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Effects")
 		class UParticleSystem* ExplosionEffect;
 
-	// Particle used when the projectile impacts against another object and explodes.
-	UPROPERTY(EditAnywhere, Category = "Effects")
-		class URadialForceComponent* ExplosionForce;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects")
+		float DamageImpulse;
 
 	//The damage type and damage that will be done by this projectile
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
@@ -60,6 +59,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
 		float DamageInnerRadius;
 
+	//Is also the ImpulseRadius
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
 		float DamageOuterRadius;
 

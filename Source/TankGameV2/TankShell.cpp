@@ -46,12 +46,9 @@ ATankShell::ATankShell()
 
 	//Initialize Tank Shell Movement Component ============================================
 	ShellMovementComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ShellMovementComp"));
-	//ShellMovementComp->SetUpdatedComponent(ShellMeshComp);
 	ShellMovementComp->InitialSpeed = 1500.0f;
 	ShellMovementComp->MaxSpeed = 1500.0f;
 	ShellMovementComp->bRotationFollowsVelocity = true;
-	//ShellMovementComp->bShouldBounce = true;
-	//ShellMovementComp->Bounciness = 0.3f;
 	ShellMovementComp->ProjectileGravityScale = 0.1f;
 
 	//Initialize Tank Shell Damage Type ===================================================
@@ -59,7 +56,7 @@ ATankShell::ATankShell()
 	Damage = 20.0f;
 	MinimumDamage = 10.0f;
 	DamageInnerRadius = 100.0f;
-	DamageOuterRadius = 200.0f;
+	DamageOuterRadius = 400.0f;
 	DamageFalloff = ERadialImpulseFalloff::RIF_Linear;
 
 	//Initialize Tank Shell Explosion Effect ==============================================
@@ -69,15 +66,7 @@ ATankShell::ATankShell()
 		ExplosionEffect = DefaultExplosionEffect.Object;
 	}
 
-	//Initialize Tank Shell Explosion Force ===============================================
-	ExplosionForce = CreateDefaultSubobject<URadialForceComponent>(TEXT("ExplosionEffect"));
-	ExplosionForce->SetupAttachment(RootComponent);
-	//ExplosionForce->AddShellMeshChannelToAffect(ECC_Visibility);
-	//ExplosionForce->AddObjectTypeToAffect((EObjectTypeQuery)ECC_WorldDynamic);
-	//ExplosionForce->AddObjectTypeToAffect((EObjectTypeQuery)ECC_PhysicsBody);
-	ExplosionForce->Radius = DamageOuterRadius;
-	ExplosionForce->ForceStrength = 100000.0f;
-	ExplosionForce->ImpulseStrength = 100000.0f;
+	DamageImpulse = 500.0f;
 
 	InitialLifeSpan = 30.0f;
 }
@@ -106,28 +95,15 @@ void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UP
 {
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		//if (OtherComponent->IsSimulatingPhysics())
-		//{
-			//OtherComponent->AddImpulseAtLocation(ShellMovementComp->Velocity * 10.0f, Hit.ImpactPoint);
-		//	OtherComponent->AddImpulse(ShellMovementComp->Velocity * 10.0f);
-		//}
-
-		//SetRootComponent(ExplosionForce);
-		//ExplosionForce->SetWorldLocation(Hit.ImpactPoint);
-
-		//ShellMeshComp->DestroyComponent();
-
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, GetActorLocation().ToString());
-		//ExplosionForce->FireImpulse();
-
 		FVector Location = GetActorLocation();
 		FRotator Rotation = GetActorRotation();
 		ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
+		Explosion->FireImpulse(DamageOuterRadius, DamageImpulse);
 
-		//UGameplayStatics::ApplyPointDamage(OtherActor, Damage, NormalImpulse, Hit, GetInstigatorController(), this, DamageType);
-		//UGameplayStatics::ApplyRadialDamageWithFalloff(this, Damage, MinimumDamage, Hit.ImpactPoint, 
-		//	DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), this, GetInstigatorController(), ECC_Visibility);
+		UGameplayStatics::ApplyRadialDamageWithFalloff(this, Damage, MinimumDamage, Hit.ImpactPoint, 
+			DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), this, GetInstigatorController(), ECC_Visibility);
 	}
+
 	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, Hit.ImpactPoint, FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
 
 	Destroy();
