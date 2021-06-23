@@ -5,6 +5,9 @@
 #include "TankShell.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
+#include <chrono>
+
+using namespace std::chrono;
 
 ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -107,4 +110,68 @@ void ATankController::StartShellFire()
 void ATankController::StopShellFire()
 {
 	bIsFiring = false;
+}
+
+int64 ATankController::GetLocalTime()
+{
+	milliseconds ms = duration_cast<milliseconds>(
+		high_resolution_clock::now().time_since_epoch()
+		);
+	return (int64)ms.count();
+}
+
+bool ATankController::IsNetworkTimeValid()
+{
+	return TimeOffsetIsValid;
+}
+
+int64 ATankController::GetNetworkTime()
+{
+	return GetLocalTime() + TimeOffsetFromServer;
+}
+
+bool ATankController::ServerGetServerTime_Validate()
+{
+	return true;
+}
+
+/** Sent from a client to the server to get the server's system time */
+void ATankController::ServerGetServerTime_Implementation()
+{
+	ClientGetServerTime(GetLocalTime());
+}
+
+/** Sent from the server to a client to give them the server's system time */
+void ATankController::ClientGetServerTime_Implementation(int64 ServerTime)
+{
+	int64 LocalTime = GetLocalTime();
+
+	// Calculate the server's system time at the moment we actually sent the request for it.
+	int64 RoundTripTime = LocalTime - TimeServerTimeRequestWasPlaced;
+	ServerTime -= RoundTripTime / 2;
+
+	// Now calculate the difference between the two values
+	TimeOffsetFromServer = ServerTime - TimeServerTimeRequestWasPlaced;
+
+	// Now we can safely say that the following is true
+	//
+	// serverTime = timeServerTimeRequestWasPlaced + timeOffsetFromServer
+	//
+	// which is another way of saying
+	//
+	// NetworkTime = LocalTime + timeOffsetFromServer
+
+	TimeOffsetIsValid = true;
+}
+
+bool ATankController::ServerSetPlayerName_Validate(const FString& PlayerName)
+{
+	return true;
+}
+
+/** Sent from a client to the server to set the client's player name. We don't use
+any sort of known online subsystem so we do it this way */
+void ATankController::ServerSetPlayerName_Implementation(const FString& PlayerName)
+{
+	//GetPlayerState<ATankState>()->SetPlayerName(PlayerName);
 }

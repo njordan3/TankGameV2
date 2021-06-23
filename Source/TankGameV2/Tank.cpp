@@ -3,6 +3,8 @@
 #include "Tank.h"
 #include "Containers/Array.h"
 #include "TankShell.h"
+#include "TankController.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -150,6 +152,20 @@ void ATank::BeginPlay()
 void ATank::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		ClientSimulateTankMovement();
+	}
+	else
+	{
+		// Servers should simulate the physics freely and replicate the orientation
+		UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(GetRootComponent());
+		ServerPhysicsState.Pos = GetActorLocation();
+		ServerPhysicsState.Rot = GetActorRotation();
+		ServerPhysicsState.Vel = Root->GetComponentVelocity();
+		ServerPhysicsState.Timestamp = ATankController::GetLocalTime();
+	}
 }
 
 void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimeProps) const
@@ -158,6 +174,102 @@ void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimePr
 
 	//Replicate current health.
 	DOREPLIFETIME(ATank, CurrentHealth);
+	DOREPLIFETIME(ATank, ServerPhysicsState);
+}
+
+void ATank::ClientSimulateTankMovement()
+{
+	ATankController* MyPC = Cast<ATankController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	if (nullptr == MyPC || !MyPC->IsNetworkTimeValid() || 0 == ProxyStateCount)
+	{
+		// We don't know yet know what the time is on the server yet so the timestamps
+		// of the proxy states mean nothing; that or we simply don't have any proxy
+		// states yet. Don't do any interpolation.
+		SetActorLocationAndRotation(ServerPhysicsState.Pos, ServerPhysicsState.Rot);
+	}
+	else
+	{
+		uint64 InterpolationBackTime = 100;
+		uint64 ExtrapolationLimit = 500;
+
+		// This is the target playback time of the rigid body
+		uint64 InterpolationTime = MyPC->GetNetworkTime() - InterpolationBackTime;
+
+		// Use interpolation if the target playback time is present in the buffer
+		if (ProxyStates[0].Timestamp > InterpolationTime)
+		{
+			// Go through buffer and find correct state to play back
+			for (int i = 0; i < ProxyStateCount; i++)
+			{
+				if (ProxyStates[i].Timestamp <= InterpolationTime || i == ProxyStateCount - 1)
+				{
+					// The state one slot newer (<100ms) than the best playback state
+					FSmoothPhysicsState RHS = ProxyStates[FMath::Max(i - 1, 0)];
+					// The best playback state (closest to 100 ms old (default time))
+					FSmoothPhysicsState LHS = ProxyStates[i];
+
+					// Use the time between the two slots to determine if interpolation is necessary
+					int64 Length = (int64)(RHS.Timestamp - LHS.Timestamp);
+					double Time = 0.0F;
+					// As the time difference gets closer to 100 ms t gets closer to 1 in
+					// which case rhs is only used
+					if (Length > 1)
+						Time = (double)(InterpolationTime - LHS.Timestamp) / (double)Length;
+
+					// if Time=0 => LHS is used directly					
+					FVector Pos = FMath::Lerp(LHS.Pos, LHS.Pos, Time);
+					FRotator Rot = FMath::Lerp(LHS.Rot, LHS.Rot, Time);
+					SetActorLocationAndRotation(Pos, Rot);
+					return;
+				}
+			}
+		}
+		// Use extrapolation
+		else
+		{
+			FSmoothPhysicsState Latest = ProxyStates[0];
+
+			uint64 ExtrapolationLength = InterpolationTime - Latest.Timestamp;
+			// Don't extrapolate for more than [ExtrapolationLimit] milliseconds
+			if (ExtrapolationLength < ExtrapolationLimit)
+			{
+				FVector Pos = Latest.Pos + Latest.Vel * ((float)ExtrapolationLength * 0.001f);
+				FRotator Rot = Latest.Rot;
+				SetActorLocationAndRotation(Pos, Rot);
+			}
+			else
+			{
+				// Don't move. If we're this far away from the server, we must be pretty laggy.
+				// Wait to catch up with the server.
+			}
+		}
+	}
+}
+
+void ATank::OnRep_ServerPhysicsState()
+{
+	// If we get here, we are always the client. Here we store the physics state
+	// for physics state interpolation.
+
+	// Shift the buffer sideways, deleting state PROXY_STATE_ARRAY_SIZE
+	for (int i = PROXY_STATE_ARRAY_SIZE - 1; i >= 1; i--)
+	{
+		ProxyStates[i] = ProxyStates[i - 1];
+	}
+
+	// Record current state in slot 0
+	ProxyStates[0] = ServerPhysicsState;
+
+	// Update used slot count, however never exceed the buffer size
+	// Slots aren't actually freed so this just makes sure the buffer is
+	// filled up and that uninitalized slots aren't used.
+	ProxyStateCount = FMath::Min(ProxyStateCount + 1, PROXY_STATE_ARRAY_SIZE);
+
+	// Check if states are in order
+	if (ProxyStates[0].Timestamp < ProxyStates[1].Timestamp)
+	{
+		UE_LOG(LogAssetData, Verbose, TEXT("Timestamp inconsistent: %d should be greater than %d"), ProxyStates[0].Timestamp, ProxyStates[1].Timestamp);
+	}
 }
 
 void ATank::MoveForward_Implementation(float ForwardInput)

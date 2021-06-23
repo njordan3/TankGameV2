@@ -6,6 +6,31 @@
 #include "GameFramework/Pawn.h"
 #include "Tank.generated.h"
 
+#define PROXY_STATE_ARRAY_SIZE 20
+
+USTRUCT()
+struct FSmoothPhysicsState
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+		uint64 Timestamp;
+	UPROPERTY()
+		FVector Pos;
+	UPROPERTY()
+		FVector Vel;
+	UPROPERTY()
+		FRotator Rot;
+
+	FSmoothPhysicsState()
+	{
+		Timestamp = 0;
+		Pos = FVector::ZeroVector;
+		Vel = FVector::ZeroVector;
+		Rot = FRotator::ZeroRotator;
+	}
+};
+
 UCLASS()
 class TANKGAMEV2_API ATank : public APawn
 {
@@ -17,6 +42,12 @@ public:
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	UPROPERTY(ReplicatedUsing = OnRep_ServerPhysicsState)
+		FSmoothPhysicsState ServerPhysicsState;
+
+	UFUNCTION()
+		void OnRep_ServerPhysicsState();
 
 protected:
 	// Called when the game starts or when spawned
@@ -141,4 +172,10 @@ public:
 		class USpringComponent* BackLeftSpringComp;
 private:
 	FVector DefaultCenterOfMass;
+
+	FSmoothPhysicsState ProxyStates[PROXY_STATE_ARRAY_SIZE];
+
+	int ProxyStateCount;
+
+	void ClientSimulateTankMovement();
 };

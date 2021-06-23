@@ -23,9 +23,11 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
-	// Projectile class to spawn.
-	//UPROPERTY(EditDefaultsOnly, Category = "TankShell")
-	//	TSubclassOf<class ATankShell> ProjectileClass;
+	bool IsNetworkTimeValid();
+
+	static int64 GetLocalTime();
+
+	int64 GetNetworkTime();
 
 protected:
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
@@ -34,12 +36,28 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 		void StopShellFire();
 
-	//RPC function for spawning projectiles.
-	//UFUNCTION(Server, Reliable)
-	//	void HandleShellFire();
+	/** Gets the game state */
+	//class ATankGameStateBase* GetGameState();
+
+	/** Sent from a client to the server to get the server's system time */
+	UFUNCTION(Reliable, Server, WithValidation)
+		void ServerGetServerTime();
+
+	/** Sent from the server to a client to give them the server's system time */
+	UFUNCTION(Reliable, Client)
+		void ClientGetServerTime(int64 serverTime);
+
+	/** Sent from a client to the server to set the client's player name. We don't use
+	any sort of known online subsystem so we do it this way */
+	UFUNCTION(Reliable, Server, WithValidation)
+		void ServerSetPlayerName(const FString& PlayerName);
 
 	bool bIsFiring;
 	FTimerHandle FiringTimer;
+
+	int64 TimeServerTimeRequestWasPlaced;
+	int64 TimeOffsetFromServer;
+	bool TimeOffsetIsValid;
 
 	//Input variables
 	float ForwardInput;
