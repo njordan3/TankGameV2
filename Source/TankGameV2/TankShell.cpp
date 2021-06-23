@@ -95,10 +95,20 @@ void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UP
 {
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		FVector Location = GetActorLocation();
-		FRotator Rotation = GetActorRotation();
-		ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
-		Explosion->FireImpulse(DamageOuterRadius, DamageImpulse);
+		AActor* HitActor = Hit.GetActor();
+
+		//If HitActor is a Tank just push the Tank, else create a Radial Impulse and try to push surrounding Actors
+		if (HitActor->GetClass() == ATank::StaticClass())
+		{
+			Cast<ATank>(HitActor)->BodyStaticMesh->AddImpulseAtLocation(GetActorForwardVector() * DamageImpulse * 2, Hit.ImpactPoint);
+		}
+		else 
+		{
+			FVector Location = GetActorLocation();
+			FRotator Rotation = GetActorRotation();
+			ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
+			Explosion->FireImpulse(DamageOuterRadius, DamageImpulse);
+		}
 
 		UGameplayStatics::ApplyRadialDamageWithFalloff(this, Damage, MinimumDamage, Hit.ImpactPoint, 
 			DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), this, GetInstigatorController(), ECC_Visibility);

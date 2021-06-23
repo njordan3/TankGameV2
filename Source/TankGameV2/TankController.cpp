@@ -108,27 +108,3 @@ void ATankController::StopShellFire()
 {
 	bIsFiring = false;
 }
-
-/*
-void ATankController::HandleShellFire_Implementation()
-{
-	FRotator MuzzleRotation = OwnerTank->GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
-	FVector MuzzleLocation = OwnerTank->GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
-
-	UWorld* World = GetWorld();
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.OwnerTank = this;
-	SpawnParams.Instigator = GetInstigator();
-
-	// Spawn the projectile at the muzzle.
-	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-	
-	if (Projectile)
-	{
-		// Set the projectile's initial trajectory.
-		FVector Direction = MuzzleRotation.Vector();
-		Projectile->FireInDirection(Direction);
-	}
-	
-}
-*/
