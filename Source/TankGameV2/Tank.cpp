@@ -155,15 +155,14 @@ void ATank::Tick(float DeltaTime)
 
 	if (GetLocalRole() < ROLE_Authority)
 	{
-		ClientSimulateTankMovement();
+		ClientSimulateTankMovement(DeltaTime);
 	}
 	else
 	{
 		// Servers should simulate the physics freely and replicate the orientation
-		UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(GetRootComponent());
 		ServerPhysicsState.Pos = GetActorLocation();
 		ServerPhysicsState.Rot = GetActorRotation();
-		ServerPhysicsState.Vel = Root->GetComponentVelocity();
+		ServerPhysicsState.Vel = BodyStaticMesh->GetComponentVelocity();
 		ServerPhysicsState.Timestamp = ATankController::GetLocalTime();
 	}
 }
@@ -177,7 +176,7 @@ void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimePr
 	DOREPLIFETIME(ATank, ServerPhysicsState);
 }
 
-void ATank::ClientSimulateTankMovement()
+void ATank::ClientSimulateTankMovement(float DeltaTime)
 {
 	ATankController* MyPC = Cast<ATankController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
 	if (nullptr == MyPC || !MyPC->IsNetworkTimeValid() || 0 == ProxyStateCount)
@@ -211,15 +210,20 @@ void ATank::ClientSimulateTankMovement()
 					// Use the time between the two slots to determine if interpolation is necessary
 					int64 Length = (int64)(RHS.Timestamp - LHS.Timestamp);
 					double Time = 0.0F;
-					// As the time difference gets closer to 100 ms t gets closer to 1 in
-					// which case rhs is only used
+					// As the time difference gets closer to 100 ms t gets closer to 1 in which case rhs is only used
+					// if Time=0 => LHS is used directly
 					if (Length > 1)
 						Time = (double)(InterpolationTime - LHS.Timestamp) / (double)Length;
 
-					// if Time=0 => LHS is used directly					
-					FVector Pos = FMath::Lerp(LHS.Pos, LHS.Pos, Time);
-					FRotator Rot = FMath::Lerp(LHS.Rot, LHS.Rot, Time);
-					SetActorLocationAndRotation(Pos, Rot);
+					float InterpSpeed = 0.5f;
+					FVector TargetPos = FMath::Lerp(LHS.Pos, RHS.Pos, Time);
+					FVector NewPos = UKismetMathLibrary::VInterpTo(GetActorLocation(), TargetPos, DeltaTime, InterpSpeed);
+					
+					FRotator TargetRot = FMath::Lerp(LHS.Rot, RHS.Rot, Time);
+					FRotator NewRot = UKismetMathLibrary::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, InterpSpeed);
+					
+					SetActorLocationAndRotation(NewPos, NewRot);
+					
 					return;
 				}
 			}
@@ -290,6 +294,8 @@ void ATank::MoveForward_Implementation(float ForwardInput)
 		ForwardForceOffset.Z * UpVector;
 
 	BodyStaticMesh->AddImpulseAtLocation(Force, Location);
+
+	CounteractDrifting();
 }
 
 void ATank::RotateBody_Implementation(float RotationInput)
@@ -315,7 +321,7 @@ void ATank::SetGunRotation_Implementation(FVector MouseLocation, FVector MouseDi
 	//GunStaticMesh->SetWorldRotation(FinalAim.Rotation());
 }
 
-void ATank::CounteractDrifting_Implementation()
+void ATank::CounteractDrifting()
 {
 	FVector RightVector = GetActorRightVector();
 

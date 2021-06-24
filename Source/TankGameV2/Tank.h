@@ -43,12 +43,6 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	UPROPERTY(ReplicatedUsing = OnRep_ServerPhysicsState)
-		FSmoothPhysicsState ServerPhysicsState;
-
-	UFUNCTION()
-		void OnRep_ServerPhysicsState();
-
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -62,6 +56,12 @@ protected:
 
 	UFUNCTION()
 		void OnRep_CurrentHealth();
+
+	UPROPERTY(ReplicatedUsing = OnRep_ServerPhysicsState)
+		FSmoothPhysicsState ServerPhysicsState;
+
+	UFUNCTION()
+		void OnRep_ServerPhysicsState();
 
 	UPROPERTY(EditAnywhere)
 		class USpringArmComponent* SpringArmComp;
@@ -116,7 +116,7 @@ public:
 	UFUNCTION(Server, Reliable)
 		void SetGunRotation(FVector MouseLocation, FVector MouseDirection);
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION()
 		void CounteractDrifting();
 
 	//RPC function for spawning projectiles.
@@ -177,5 +177,5 @@ private:
 
 	int ProxyStateCount;
 
-	void ClientSimulateTankMovement();
+	void ClientSimulateTankMovement(float DeltaTime);
 };

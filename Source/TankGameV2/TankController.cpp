@@ -70,7 +70,6 @@ void ATankController::MoveForward(float Value)
 		if (ForwardInput != 0.0f)
 		{
 			OwnerTank->MoveForward(ForwardInput);
-			OwnerTank->CounteractDrifting();
 		}
 	}
 }
