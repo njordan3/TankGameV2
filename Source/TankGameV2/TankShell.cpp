@@ -10,6 +10,7 @@
 #include "Particles/ParticleSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "PhysicsEngine/RadialForceComponent.h"
+#include "Particles/ParticleSystemComponent.h"
 
 // Sets default values
 ATankShell::ATankShell()
@@ -66,6 +67,15 @@ ATankShell::ATankShell()
 		ExplosionEffect = DefaultExplosionEffect.Object;
 	}
 
+	//Initialize Tank Shell Explosion Effect ==============================================
+	TracerEffect = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("TracerEffect"));
+	TracerEffect->SetupAttachment(RootComponent);
+	static ConstructorHelpers::FObjectFinder<UParticleSystem> DefaultTracerEffect(TEXT("/Game/StarterContent/Particles/P_Smoke.P_Smoke"));
+	if (DefaultTracerEffect.Succeeded())
+	{
+		TracerEffect->SetTemplate(DefaultTracerEffect.Object);
+	}
+
 	DamageImpulse = 500.0f;
 
 	InitialLifeSpan = 30.0f;
@@ -81,7 +91,6 @@ void ATankShell::BeginPlay()
 void ATankShell::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void ATankShell::FireInDirection(FVector& Direction)

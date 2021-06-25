@@ -39,9 +39,11 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 		class UProjectileMovementComponent* ShellMovementComp;
 
-	// Particle used when the projectile impacts against another object and explodes.
 	UPROPERTY(EditAnywhere, Category = "Effects")
 		class UParticleSystem* ExplosionEffect;
+
+	UPROPERTY(EditAnywhere, Category = "Effects")
+		class UParticleSystemComponent* TracerEffect;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects")
 		float DamageImpulse;

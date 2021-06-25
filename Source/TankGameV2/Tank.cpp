@@ -210,8 +210,9 @@ void ATank::ClientSimulateTankMovement(float DeltaTime)
 					// Use the time between the two slots to determine if interpolation is necessary
 					int64 Length = (int64)(RHS.Timestamp - LHS.Timestamp);
 					double Time = 0.0F;
-					// As the time difference gets closer to 100 ms t gets closer to 1 in which case rhs is only used
-					// if Time=0 => LHS is used directly
+
+					//As the time difference gets closer to 100ms Time gets closer to 1.0f in which case RHS is only used.
+					//If Time = 0, then LHS is used directly.
 					if (Length > 1)
 						Time = (double)(InterpolationTime - LHS.Timestamp) / (double)Length;
 
