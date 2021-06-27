@@ -51,6 +51,7 @@ void ATankController::Tick(float DeltaTime)
 		//Gun Rotation
 		FVector MouseLocation;
 		FVector MouseDirection;
+
 		if (DeprojectMousePositionToWorld(MouseLocation, MouseDirection))
 		{
 			OwnerTank->SetGunRotation(MouseLocation, MouseDirection);

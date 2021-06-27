@@ -10,6 +10,7 @@
 #include "Camera/CameraComponent.h"
 #include "SpringComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "DrawDebugHelpers.h"
 
 // Sets default values
 ATank::ATank()
@@ -60,31 +61,37 @@ ATank::ATank()
 	BodyStaticMesh->SetMassOverrideInKg(NAME_None, 100.0f);
 	BodyStaticMesh->GetBodyInstance()->UpdateMassProperties();
 
-	//Initialize Tank Gun Static Mesh =============================================
-	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
-	GunStaticMesh->SetupAttachment(BodyStaticMesh);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
-	UStaticMesh* GunAsset = GunMesh.Object;
-	GunStaticMesh->SetStaticMesh(GunAsset);
-	GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body'
-	GunStaticMesh->SetIsReplicated(true);
-
-	//Initialize Spring Arm Component =============================================
-	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
-	SpringArmComp->SetupAttachment(BodyStaticMesh);
-	SpringArmComp->SetRelativeLocationAndRotation(
+	//Initialize Camera Spring Arm Component ======================================
+	CameraSpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraSpringArmComponent"));
+	CameraSpringArmComp->SetupAttachment(BodyStaticMesh);
+	CameraSpringArmComp->SetRelativeLocationAndRotation(
 		FVector(0.0f, 0.0f, 0.0f),
 		FRotator(-89.9f, 0.0f, 0.0f)
 	);
-	SpringArmComp->TargetArmLength = 3000.0f;
-	SpringArmComp->bDoCollisionTest = false;
-	SpringArmComp->bInheritPitch = false;
-	SpringArmComp->bInheritRoll = false;
-	SpringArmComp->bInheritYaw = false;
+	CameraSpringArmComp->TargetArmLength = 3000.0f;
+	CameraSpringArmComp->bDoCollisionTest = false;
+	CameraSpringArmComp->bInheritPitch = false;
+	CameraSpringArmComp->bInheritRoll = false;
+	CameraSpringArmComp->bInheritYaw = false;
 
 	//Initialize Camera Component =================================================
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
-	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
+	CameraComp->SetupAttachment(CameraSpringArmComp, USpringArmComponent::SocketName);
+	CameraComp->bUsePawnControlRotation = false;
+
+	//Initialize Tank Gun Spring Arm Component ====================================
+	TankGunSpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("TankGunSpringArmComponent"));
+	TankGunSpringArmComp->SetupAttachment(BodyStaticMesh);
+	TankGunSpringArmComp->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body'
+	TankGunSpringArmComp->TargetArmLength = 0.0f;
+
+	//Initialize Tank Gun Static Mesh =============================================
+	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
+	GunStaticMesh->SetupAttachment(TankGunSpringArmComp, USpringArmComponent::SocketName);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
+	UStaticMesh* GunAsset = GunMesh.Object;
+	GunStaticMesh->SetStaticMesh(GunAsset);
+	GunStaticMesh->SetIsReplicated(true);
 
 	//Initialize Front Right Spring Component =====================================
 	FrontRightSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("FrontRightSpringComponent"));
@@ -152,6 +159,14 @@ void ATank::BeginPlay()
 void ATank::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	FVector Start = GunStaticMesh->GetComponentLocation();
+	FVector End = (GetActorQuat().GetAxisZ() * 1000.0f) + Start;
+
+	//check(GEngine != nullptr);
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%f"), Yaw));
+
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.01f, 0, 5);
 
 	if (GetLocalRole() < ROLE_Authority)
 	{
@@ -307,19 +322,62 @@ void ATank::RotateBody_Implementation(float RotationInput)
 
 void ATank::SetGunRotation_Implementation(FVector MouseLocation, FVector MouseDirection)
 {
-	MouseDirection.Z = 0.f;
-	FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(MouseDirection, GetActorUpVector());
-	GunStaticMesh->SetWorldRotation(Direction.Rotation());
+	//MouseDirection.Z = 0.0f;
+	//FRotator Direction = UKismetMathLibrary::ProjectVectorOnToPlane(MouseDirection, GetActorUpVector()).Rotation();
+	//GunStaticMesh->SetWorldRotation(FRotator(GetActorRotation().Pitch, Direction.Yaw, GetActorRotation().Roll));
 
-	//FVector Origin = GetActorLocation();
-	//float d = FVector::DotProduct((FVector(0, 0, Origin.Z) - MouseLocation), FVector::UpVector)
-	//	/ FVector::DotProduct(MouseDirection, FVector::UpVector);
-	//FVector GroundPoint = MouseLocation + MouseDirection * d;
-	//FVector FinalAim = GroundPoint - Origin;
-	//FinalAim.Z = 0.f;
-	//FinalAim.Normalize();
+	FVector Origin = GunStaticMesh->GetComponentLocation();
+	FVector UpVector = GetActorUpVector();
+	float d = FVector::DotProduct((FVector(0, 0, Origin.Z) - MouseLocation), UpVector)
+		/ FVector::DotProduct(MouseDirection, UpVector);
+	FVector GroundPoint = MouseLocation + MouseDirection * d;
+	FVector FinalAim = GroundPoint - Origin;
+	FinalAim.Z = 0.f;
+	FinalAim.Normalize();
+	TankGunSpringArmComp->SetRelativeRotation(FRotator(0.0f, FinalAim.Rotation().Yaw - GetActorForwardVector().Rotation().Yaw, 0.0f));
 
-	//GunStaticMesh->SetWorldRotation(FinalAim.Rotation());
+
+	/*
+	FVector OriginLocation = GunStaticMesh->GetComponentLocation();
+	FRotator OriginRot = GetActorRotation();
+
+	float Yaw = 
+		FMath::RadiansToDegrees(
+			FMath::Acos(
+				FVector::DotProduct(OriginLocation.GetSafeNormal(), MouseLocation.GetSafeNormal())
+			)
+		);
+
+	GunStaticMesh->SetWorldRotation(FRotator(OriginRot.Pitch, Yaw, OriginRot.Roll));
+	*/
+
+
+	//FRotator OriginRot = GetActorRotation();
+	//GunStaticMesh->SetWorldRotation(FRotator(OriginRot.Pitch, MouseDirection.Rotation().Yaw, OriginRot.Roll));
+
+
+
+	//FVector OriginLocation = GunStaticMesh->GetComponentLocation();
+	//FQuat OriginQuat = GetActorQuat();
+
+	//FVector2D MouseVector = FVector2D(OriginLocation.X - MouseLocation.X, OriginLocation.Y - MouseLocation.Y);
+	//FVector2D ForwardVector = FVector2D(GetActorForwardVector());
+
+	//float Dot = ForwardVector.X * MouseVector.X + ForwardVector.Y * MouseVector.Y;	//Dot Product, proportional to cosine, or X
+	//float Det = ForwardVector.X * MouseVector.Y - ForwardVector.Y * MouseVector.X;	//Determinate, proportional to sine, or Y
+	//float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Det, Dot)) - 90;	//Atan2(sin, cos), or Atan2(Y, X). -90 to move the Yaw 90 degrees counter clockwise
+
+	//FVector Start = GunStaticMesh->GetComponentLocation();
+	//FVector End = (FVector().RotateAngleAxis(Yaw, GetActorUpVector()) * 1000.0f) + Start;
+
+	//check(GEngine != nullptr);
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%f"), Yaw));
+
+	//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.01f, 0, 5);
+
+
+
+	//GunStaticMesh->SetWorldRotation(FQuat(GetActorQuat().GetUpVector(), FMath::DegreesToRadians(MouseDirection.Rotation().Yaw)));
 }
 
 void ATank::CounteractDrifting()

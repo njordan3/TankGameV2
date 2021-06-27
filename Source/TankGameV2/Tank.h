@@ -64,7 +64,10 @@ protected:
 		void OnRep_ServerPhysicsState();
 
 	UPROPERTY(EditAnywhere)
-		class USpringArmComponent* SpringArmComp;
+		class USpringArmComponent* CameraSpringArmComp;
+
+	UPROPERTY(EditAnywhere)
+		USpringArmComponent* TankGunSpringArmComp;
 
 	UPROPERTY(EditAnywhere)
 		class UCameraComponent* CameraComp;
