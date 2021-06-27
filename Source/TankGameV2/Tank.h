@@ -67,9 +67,6 @@ protected:
 		class USpringArmComponent* CameraSpringArmComp;
 
 	UPROPERTY(EditAnywhere)
-		USpringArmComponent* TankGunSpringArmComp;
-
-	UPROPERTY(EditAnywhere)
 		class UCameraComponent* CameraComp;
 
 	UPROPERTY(EditAnywhere, Category = "Suspension")
