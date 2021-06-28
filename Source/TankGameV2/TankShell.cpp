@@ -4,7 +4,7 @@
 #include "TankShell.h"
 #include "Tank.h"
 #include "TankShellExplosion.h"
-#include "Components/BoxComponent.h"
+#include "TankState.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameFramework/DamageType.h"
 #include "Particles/ParticleSystem.h"
@@ -27,12 +27,12 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
-
+	ShellMeshComp->SetIsReplicated(true);
+	SetRootComponent(ShellMeshComp);
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
 	}
-	SetRootComponent(ShellMeshComp);
 
 	/*//Initialize Tank Shell Material ======================================================
 	static ConstructorHelpers::FObjectFinder<UMaterial> ShellMaterial(TEXT("[ADD MATERIAL ASSET REFERENCE]"));
@@ -51,6 +51,7 @@ ATankShell::ATankShell()
 	ShellMovementComp->MaxSpeed = 1500.0f;
 	ShellMovementComp->bRotationFollowsVelocity = true;
 	ShellMovementComp->ProjectileGravityScale = 0.1f;
+	//ShellMovementComp->SetIsReplicated(true);
 
 	//Initialize Tank Shell Damage Type ===================================================
 	DamageType = UDamageType::StaticClass();
@@ -120,7 +121,7 @@ void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UP
 		}
 
 		UGameplayStatics::ApplyRadialDamageWithFalloff(this, Damage, MinimumDamage, Hit.ImpactPoint, 
-			DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), this, GetInstigatorController(), ECC_Visibility);
+			DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), GetInstigator(), GetInstigatorController(), ECC_Visibility);
 	}
 
 	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, Hit.ImpactPoint, FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);

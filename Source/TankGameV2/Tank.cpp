@@ -4,6 +4,7 @@
 #include "Containers/Array.h"
 #include "TankShell.h"
 #include "TankController.h"
+#include "TankState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -84,18 +85,15 @@ ATank::ATank()
 	TankGunSpringArmComp->SetupAttachment(BodyStaticMesh);
 	TankGunSpringArmComp->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body'
 	TankGunSpringArmComp->TargetArmLength = 0.0f;
-	TankGunSpringArmComp->SetIsReplicated(true);
-	//TankGunSpringArmComp->bInheritYaw = false;
+	TankGunSpringArmComp->SetIsReplicated(true);	//Replicate Spring Arm; otherwise the Tank Gun is in the wrong spot for clients
 
 	//Initialize Tank Gun Static Mesh =============================================
 	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
 	GunStaticMesh->SetupAttachment(TankGunSpringArmComp, USpringArmComponent::SocketName);
-	//GunStaticMesh->SetupAttachment(BodyStaticMesh);
-	//GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
 	UStaticMesh* GunAsset = GunMesh.Object;
 	GunStaticMesh->SetStaticMesh(GunAsset);
-	GunStaticMesh->SetIsReplicated(true);
+	GunStaticMesh->SetIsReplicated(true);	//Replicate Gun Static Mesh instead of custom interpolation because it doesn't need interpolation
 
 	//Initialize Front Right Spring Component =====================================
 	FrontRightSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("FrontRightSpringComponent"));
@@ -186,7 +184,7 @@ void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimePr
 
 void ATank::ClientSimulateTankMovement()
 {
-	ATankController* MyPC = Cast<ATankController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	ATankController* MyPC = Cast<ATankController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));	//Index 0 because this is client side so there is only one visible controller
 	if (nullptr == MyPC || !MyPC->IsNetworkTimeValid() || 0 == ProxyStateCount)
 	{
 		// We don't know yet know what the time is on the server yet so the timestamps
@@ -380,7 +378,7 @@ float ATank::TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEven
 {
 	float ActualDamage = Super::TakeDamage(DamageTaken, DamageEvent, nullptr, DamageCauser);
 
-	if (EventInstigator == nullptr)
+	if (EventInstigator != nullptr || DamageCauser != nullptr)
 	{
 		float DamageApplied = CurrentHealth - ActualDamage;
 		SetCurrentHealth(DamageApplied);
@@ -388,7 +386,7 @@ float ATank::TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEven
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("NULL"));
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("No Damage Instigator"));
 		return CurrentHealth;
 	}
 	

@@ -14,9 +14,14 @@ class TANKGAMEV2_API ATankGameV2GameModeBase : public AGameModeBase
 {
 	GENERATED_BODY()
 
+public:
+
 	ATankGameV2GameModeBase();
 
 	virtual void StartPlay() override;
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+
+	/** Used for naming bots */
+	int NextBotNameID;
 };

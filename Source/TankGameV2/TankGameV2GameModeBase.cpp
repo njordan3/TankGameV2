@@ -4,11 +4,15 @@
 #include "TankGameV2GameModeBase.h"
 #include "Tank.h"
 #include "TankController.h"
+#include "TankState.h"
 
 ATankGameV2GameModeBase::ATankGameV2GameModeBase()
 {
 	PlayerControllerClass = ATankController::StaticClass();
 	DefaultPawnClass = ATank::StaticClass();
+	PlayerStateClass = ATankState::StaticClass();
+
+	NextBotNameID = 1;
 }
 
 void ATankGameV2GameModeBase::StartPlay()

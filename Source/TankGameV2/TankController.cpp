@@ -3,6 +3,7 @@
 #include "TankController.h"
 #include "Tank.h"
 #include "TankShell.h"
+#include "TankState.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include <chrono>
@@ -24,6 +25,8 @@ ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : 
 
 void ATankController::BeginPlay() {
 	Super::BeginPlay();
+
+	ServerSetPlayerName(TEXT("TEST"));
 }
 
 // Called to bind functionality to input
@@ -181,5 +184,5 @@ bool ATankController::ServerSetPlayerName_Validate(const FString& PlayerName)
 any sort of known online subsystem so we do it this way */
 void ATankController::ServerSetPlayerName_Implementation(const FString& PlayerName)
 {
-	//GetPlayerState<ATankState>()->SetPlayerName(PlayerName);
+	GetPlayerState<ATankState>()->SetPlayerName(PlayerName);
 }
