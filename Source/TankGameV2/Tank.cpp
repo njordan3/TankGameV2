@@ -79,10 +79,19 @@ ATank::ATank()
 	CameraComp->SetupAttachment(CameraSpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
 
+	//Initialize Tank Gun Spring Arm Component ====================================
+	TankGunSpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("TankGunSpringArmComponent"));
+	TankGunSpringArmComp->SetupAttachment(BodyStaticMesh);
+	TankGunSpringArmComp->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));	//Rest Tank Gun in the correct position on the Tank Body'
+	TankGunSpringArmComp->TargetArmLength = 0.0f;
+	TankGunSpringArmComp->SetIsReplicated(true);
+	//TankGunSpringArmComp->bInheritYaw = false;
+
 	//Initialize Tank Gun Static Mesh =============================================
 	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
-	GunStaticMesh->SetupAttachment(BodyStaticMesh);
-	GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));
+	GunStaticMesh->SetupAttachment(TankGunSpringArmComp, USpringArmComponent::SocketName);
+	//GunStaticMesh->SetupAttachment(BodyStaticMesh);
+	//GunStaticMesh->SetRelativeLocation(FVector(50.0f, 0.0f, 110.0f));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
 	UStaticMesh* GunAsset = GunMesh.Object;
 	GunStaticMesh->SetStaticMesh(GunAsset);
@@ -144,10 +153,7 @@ void ATank::BeginPlay()
 	);
 	BackLeftSpringComp->SuspensionLength = SuspensionLength;
 	BackLeftSpringComp->SpringCoefficient = SpringCoefficient;
-	BackLeftSpringComp->DampingCoefficient = DampingCoefficient;
-
-	check(GEngine != nullptr);
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Tank Initialized %f"), BodyStaticMesh->GetMass()));
+	BackLeftSpringComp->DampingCoefficient = DampingCoefficient;	
 }
 
 // Called every frame
@@ -157,13 +163,13 @@ void ATank::Tick(float DeltaTime)
 
 	if (GetLocalRole() < ROLE_Authority)
 	{
-		ClientSimulateTankMovement(DeltaTime);
+		ClientSimulateTankMovement();
 	}
 	else
 	{
 		// Servers should simulate the physics freely and replicate the orientation
 		ServerPhysicsState.Pos = GetActorLocation();
-		ServerPhysicsState.Rot = GetActorRotation();
+		ServerPhysicsState.BodyRot = GetActorRotation();
 		ServerPhysicsState.Vel = BodyStaticMesh->GetComponentVelocity();
 		ServerPhysicsState.Timestamp = ATankController::GetLocalTime();
 	}
@@ -178,7 +184,7 @@ void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimePr
 	DOREPLIFETIME(ATank, ServerPhysicsState);
 }
 
-void ATank::ClientSimulateTankMovement(float DeltaTime)
+void ATank::ClientSimulateTankMovement()
 {
 	ATankController* MyPC = Cast<ATankController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
 	if (nullptr == MyPC || !MyPC->IsNetworkTimeValid() || 0 == ProxyStateCount)
@@ -186,7 +192,7 @@ void ATank::ClientSimulateTankMovement(float DeltaTime)
 		// We don't know yet know what the time is on the server yet so the timestamps
 		// of the proxy states mean nothing; that or we simply don't have any proxy
 		// states yet. Don't do any interpolation.
-		SetActorLocationAndRotation(ServerPhysicsState.Pos, ServerPhysicsState.Rot);
+		BodyStaticMesh->SetWorldLocationAndRotation(ServerPhysicsState.Pos, ServerPhysicsState.BodyRot);
 	}
 	else
 	{
@@ -218,14 +224,10 @@ void ATank::ClientSimulateTankMovement(float DeltaTime)
 					if (Length > 1)
 						Time = (double)(InterpolationTime - LHS.Timestamp) / (double)Length;
 
-					float InterpSpeed = 0.5f;
 					FVector TargetPos = FMath::Lerp(LHS.Pos, RHS.Pos, Time);
-					FVector NewPos = UKismetMathLibrary::VInterpTo(GetActorLocation(), TargetPos, DeltaTime, InterpSpeed);
-					
-					FRotator TargetRot = FMath::Lerp(LHS.Rot, RHS.Rot, Time);
-					FRotator NewRot = UKismetMathLibrary::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, InterpSpeed);
-					
-					SetActorLocationAndRotation(NewPos, NewRot);
+					FRotator TargetBodyRot = FMath::Lerp(LHS.BodyRot, RHS.BodyRot, Time);
+			
+					BodyStaticMesh->SetWorldLocationAndRotation(TargetPos, TargetBodyRot);
 					
 					return;
 				}
@@ -241,8 +243,9 @@ void ATank::ClientSimulateTankMovement(float DeltaTime)
 			if (ExtrapolationLength < ExtrapolationLimit)
 			{
 				FVector Pos = Latest.Pos + Latest.Vel * ((float)ExtrapolationLength * 0.001f);
-				FRotator Rot = Latest.Rot;
-				SetActorLocationAndRotation(Pos, Rot);
+				FRotator BodyRot = Latest.BodyRot;
+
+				BodyStaticMesh->SetWorldLocationAndRotation(Pos, BodyRot);
 			}
 			else
 			{
@@ -307,24 +310,19 @@ void ATank::RotateBody_Implementation(float RotationInput)
 	BodyStaticMesh->AddAngularImpulse(Torque);
 }
 
-void ATank::SetGunRotation_Implementation(FVector MouseLocation, FVector MouseDirection)
+void ATank::ServerSetGunRotation_Implementation(float Yaw)
 {
-	//Get the aim vector using mouse world location and direction
-	FVector Origin = GunStaticMesh->GetComponentLocation();
-	FVector UpVector = GetActorUpVector();
-	float d = FVector::DotProduct((FVector(0, 0, Origin.Z) - MouseLocation), UpVector)
-		/ FVector::DotProduct(MouseDirection, UpVector);
-	FVector GroundPoint = MouseLocation + MouseDirection * d;
-	FVector FinalAim = GroundPoint - Origin;
-	FinalAim.Z = 0.f;
-	FinalAim.Normalize();
+	SetGunRotation(Yaw);
+}
 
+void ATank::SetGunRotation(float Yaw)
+{
 	//Check if the Tank is upside down
 	FRotator Orientation = GetActorRotation();
 	int8 OrientationSign = ((Orientation.Pitch < -90.0f || Orientation.Pitch > 90.0f) || (Orientation.Roll < -90.0f || Orientation.Roll > 90.0f)) ? -1 : 1;	//Upside down is -1
 
-	float Yaw = OrientationSign * (FinalAim.Rotation().Yaw - GetActorForwardVector().Rotation().Yaw);
-	GunStaticMesh->SetRelativeRotation(FRotator(0.0f, Yaw, 0.0f));
+	Yaw = OrientationSign * (Yaw - GetActorForwardVector().Rotation().Yaw);
+	TankGunSpringArmComp->SetRelativeRotation(FRotator(0.0f, Yaw, 0.0f));
 }
 
 void ATank::CounteractDrifting()

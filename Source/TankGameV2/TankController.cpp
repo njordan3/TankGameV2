@@ -14,6 +14,8 @@ ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : 
 	PrimaryActorTick.bCanEverTick = true;
 
 	//ProjectileClass = ATankShell::StaticClass();
+	TimeOffsetIsValid = true;
+	TimeOffsetFromServer = 0;
 
 	bIsFiring = false;
 
@@ -48,14 +50,20 @@ void ATankController::Tick(float DeltaTime)
 
 	if (OwnerTank != nullptr && IsLocalController())
 	{
-		//Gun Rotation
-		FVector MouseLocation;
-		FVector MouseDirection;
-
 		if (DeprojectMousePositionToWorld(MouseLocation, MouseDirection))
 		{
-			OwnerTank->SetGunRotation(MouseLocation, MouseDirection);
+			//Get the aim vector using mouse world location and direction
+			FVector Origin = OwnerTank->GunStaticMesh->GetComponentLocation();
+			FVector UpVector = OwnerTank->GetActorUpVector();
+			float d = FVector::DotProduct((FVector(0, 0, Origin.Z) - MouseLocation), UpVector)
+				/ FVector::DotProduct(MouseDirection, UpVector);
+			FVector GroundPoint = MouseLocation + MouseDirection * d;
+			FVector FinalAim = GroundPoint - Origin;
+			FinalAim.Normalize();
+
+			OwnerTank->ServerSetGunRotation(FinalAim.Rotation().Yaw);
 		}
+
 	}
 }
 

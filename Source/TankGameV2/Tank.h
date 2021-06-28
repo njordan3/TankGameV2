@@ -20,14 +20,14 @@ struct FSmoothPhysicsState
 	UPROPERTY()
 		FVector Vel;
 	UPROPERTY()
-		FRotator Rot;
+		FRotator BodyRot;
 
 	FSmoothPhysicsState()
 	{
 		Timestamp = 0;
 		Pos = FVector::ZeroVector;
 		Vel = FVector::ZeroVector;
-		Rot = FRotator::ZeroRotator;
+		BodyRot = FRotator::ZeroRotator;
 	}
 };
 
@@ -65,6 +65,9 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 		class USpringArmComponent* CameraSpringArmComp;
+
+	UPROPERTY(EditAnywhere)
+		USpringArmComponent* TankGunSpringArmComp;
 
 	UPROPERTY(EditAnywhere)
 		class UCameraComponent* CameraComp;
@@ -114,7 +117,10 @@ public:
 		void RotateBody(float RotationInput);
 
 	UFUNCTION(Server, Reliable)
-		void SetGunRotation(FVector MouseLocation, FVector MouseDirection);
+		void ServerSetGunRotation(float Yaw);
+
+	UFUNCTION()
+		void SetGunRotation(float Yaw);
 
 	UFUNCTION()
 		void CounteractDrifting();
@@ -177,5 +183,5 @@ private:
 
 	int ProxyStateCount;
 
-	void ClientSimulateTankMovement(float DeltaTime);
+	void ClientSimulateTankMovement();
 };

@@ -66,4 +66,8 @@ protected:
 	//Input functions
 	void MoveForward(float AxisValue);
 	void RotateBody(float AxisValue);
+
+private:
+	FVector MouseLocation;
+	FVector MouseDirection;
 };
