@@ -20,6 +20,8 @@ ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : 
 
 	bIsFiring = false;
 
+	MouseYaw = 0.0f;
+
 	bShowMouseCursor = true;
 };
 
@@ -53,6 +55,8 @@ void ATankController::Tick(float DeltaTime)
 
 	if (OwnerTank != nullptr && IsLocalController())
 	{
+		FVector MouseLocation, MouseDirection;
+
 		if (DeprojectMousePositionToWorld(MouseLocation, MouseDirection))
 		{
 			//Get the aim vector using mouse world location and direction
@@ -64,9 +68,17 @@ void ATankController::Tick(float DeltaTime)
 			FVector FinalAim = GroundPoint - Origin;
 			FinalAim.Normalize();
 
-			OwnerTank->ServerSetGunRotation(FinalAim.Rotation().Yaw);
+			MouseYaw = FinalAim.Rotation().Yaw;
 		}
 
+		//Clients only send to server
+		if (GetLocalRole() < ROLE_Authority && (ForwardInput == 0.0f && RotationInput == 0.0f))
+		{
+			OwnerTank->ServerSetGunRotation(MouseYaw);
+		}
+
+		//Locally rotation gun for visually less lag
+		OwnerTank->SetGunRotation(MouseYaw);
 	}
 }
 
@@ -81,7 +93,7 @@ void ATankController::MoveForward(float Value)
 		//Forward Movement
 		if (ForwardInput != 0.0f)
 		{
-			OwnerTank->MoveForward(ForwardInput);
+			OwnerTank->MoveForward(ForwardInput, MouseYaw);
 		}
 	}
 }
@@ -97,7 +109,7 @@ void ATankController::RotateBody(float Value)
 		//Body Rotation
 		if (RotationInput != 0.0f)
 		{
-			OwnerTank->RotateBody(RotationInput);
+			OwnerTank->RotateBody(RotationInput, MouseYaw);
 		}
 	}
 }

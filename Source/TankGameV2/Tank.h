@@ -111,10 +111,10 @@ public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION(Server, Reliable)
-		void MoveForward(float ForwardInput);
+		void MoveForward(float ForwardInput, float Yaw);
 
 	UFUNCTION(Server, Reliable)
-		void RotateBody(float RotationInput);
+		void RotateBody(float RotationInput, float Yaw);
 
 	UFUNCTION(Server, Reliable)
 		void ServerSetGunRotation(float Yaw);

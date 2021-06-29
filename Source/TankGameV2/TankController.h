@@ -68,6 +68,5 @@ protected:
 	void RotateBody(float AxisValue);
 
 private:
-	FVector MouseLocation;
-	FVector MouseDirection;
+	float MouseYaw;
 };

@@ -280,7 +280,7 @@ void ATank::OnRep_ServerPhysicsState()
 	}
 }
 
-void ATank::MoveForward_Implementation(float ForwardInput)
+void ATank::MoveForward_Implementation(float ForwardInput, float Yaw)
 {
 	FVector ForwardVector = GetActorForwardVector();
 	FVector RightVector = GetActorRightVector();
@@ -300,12 +300,16 @@ void ATank::MoveForward_Implementation(float ForwardInput)
 	BodyStaticMesh->AddImpulseAtLocation(Force, Location);
 
 	CounteractDrifting();
+
+	SetGunRotation(Yaw);
 }
 
-void ATank::RotateBody_Implementation(float RotationInput)
+void ATank::RotateBody_Implementation(float RotationInput, float Yaw)
 {
 	FVector Torque = GetActorUpVector() * RotationInput * TurnTorque * GetGroundedSpringRatio();
 	BodyStaticMesh->AddAngularImpulse(Torque);
+
+	SetGunRotation(Yaw);
 }
 
 void ATank::ServerSetGunRotation_Implementation(float Yaw)

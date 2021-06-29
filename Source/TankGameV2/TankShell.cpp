@@ -27,12 +27,11 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
-	ShellMeshComp->SetIsReplicated(true);
-	SetRootComponent(ShellMeshComp);
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
 	}
+	SetRootComponent(ShellMeshComp);
 
 	/*//Initialize Tank Shell Material ======================================================
 	static ConstructorHelpers::FObjectFinder<UMaterial> ShellMaterial(TEXT("[ADD MATERIAL ASSET REFERENCE]"));
@@ -51,7 +50,6 @@ ATankShell::ATankShell()
 	ShellMovementComp->MaxSpeed = 1500.0f;
 	ShellMovementComp->bRotationFollowsVelocity = true;
 	ShellMovementComp->ProjectileGravityScale = 0.1f;
-	//ShellMovementComp->SetIsReplicated(true);
 
 	//Initialize Tank Shell Damage Type ===================================================
 	DamageType = UDamageType::StaticClass();
