@@ -27,10 +27,6 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
-	}
 	SetRootComponent(ShellMeshComp);
 
 	/*//Initialize Tank Shell Material ======================================================
@@ -84,6 +80,16 @@ ATankShell::ATankShell()
 void ATankShell::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
+	}
+	else    //Remove client side collision
+	{
+		ShellMeshComp->SetCollisionProfileName(TEXT("NoCollision"));
+		ShellMeshComp->UpdateCollisionProfile();
+	}
 }
 
 // Called every frame
@@ -120,9 +126,14 @@ void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UP
 
 		UGameplayStatics::ApplyRadialDamageWithFalloff(this, Damage, MinimumDamage, Hit.ImpactPoint, 
 			DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), GetInstigator(), GetInstigatorController(), ECC_Visibility);
+
+		Destroy();
 	}
+}
 
-	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, Hit.ImpactPoint, FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
+void ATankShell::Destroyed()
+{
+	Super::Destroyed();
 
-	Destroy();
+	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, GetActorLocation(), FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
 }
