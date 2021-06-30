@@ -184,4 +184,7 @@ private:
 	int ProxyStateCount;
 
 	void ClientSimulateTankMovement();
+
+	AController* LastDamageInstigator;
+	AActor* LastDamageCauser;
 };

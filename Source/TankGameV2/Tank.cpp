@@ -343,30 +343,30 @@ void ATank::OnRep_CurrentHealth()
 
 void ATank::OnHealthUpdate()
 {
+	bool Dead = CurrentHealth <= 0;
+
 	//Client-specific functionality
 	if (IsLocallyControlled())
 	{
-		FString HealthMessage = FString::Printf(TEXT("You now have %f health remaining."), CurrentHealth);
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
-
-		if (CurrentHealth <= 0)
+		if (Dead)
 		{
-			FString DeathMessage = FString::Printf(TEXT("You have been killed."));
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, DeathMessage);
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You have been killed."));
+		}
+		else
+		{
+			FString HealthMessage = FString::Printf(TEXT("You now have %f health remaining."), CurrentHealth);
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
 		}
 	}
 
 	//Server-specific functionality
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		FString HealthMessage = FString::Printf(TEXT("%s now has %f health remaining."), *GetFName().ToString(), CurrentHealth);
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
+		if (Dead)
+		{
+			Destroy();
+		}
 	}
-
-	//Functions that occur on all machines. 
-	/*
-		Any special functionality that should occur as a result of damage or death should be placed here.
-	*/
 }
 
 void ATank::SetCurrentHealth(float HealthValue)
@@ -380,10 +380,13 @@ void ATank::SetCurrentHealth(float HealthValue)
 
 float ATank::TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	float ActualDamage = Super::TakeDamage(DamageTaken, DamageEvent, nullptr, DamageCauser);
+	float ActualDamage = Super::TakeDamage(DamageTaken, DamageEvent, EventInstigator, DamageCauser);
 
 	if (EventInstigator != nullptr || DamageCauser != nullptr)
 	{
+		LastDamageInstigator = EventInstigator;
+		LastDamageCauser = DamageCauser;
+
 		float DamageApplied = CurrentHealth - ActualDamage;
 		SetCurrentHealth(DamageApplied);
 		return DamageApplied;

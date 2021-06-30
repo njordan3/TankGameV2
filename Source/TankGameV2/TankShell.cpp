@@ -27,6 +27,10 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
+	}
 	SetRootComponent(ShellMeshComp);
 
 	/*//Initialize Tank Shell Material ======================================================
@@ -49,11 +53,10 @@ ATankShell::ATankShell()
 
 	//Initialize Tank Shell Damage Type ===================================================
 	DamageType = UDamageType::StaticClass();
-	Damage = 20.0f;
-	MinimumDamage = 10.0f;
-	DamageInnerRadius = 100.0f;
-	DamageOuterRadius = 400.0f;
-	DamageFalloff = ERadialImpulseFalloff::RIF_Linear;
+	BaseDamage = 20.0f;
+	InnerRadius = 100.0f;
+	OuterRadius = 400.0f;
+	Impulse = 500.0f;
 
 	//Initialize Tank Shell Explosion Effect ==============================================
 	static ConstructorHelpers::FObjectFinder<UParticleSystem> DefaultExplosionEffect(TEXT("/Game/StarterContent/Particles/P_Explosion.P_Explosion"));
@@ -71,8 +74,6 @@ ATankShell::ATankShell()
 		TracerEffect->SetTemplate(DefaultTracerEffect.Object);
 	}
 
-	DamageImpulse = 500.0f;
-
 	InitialLifeSpan = 30.0f;
 }
 
@@ -81,11 +82,7 @@ void ATankShell::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
-	}
-	else    //Remove client side collision
+	if (GetLocalRole() < ROLE_Authority)	//Remove client side collision
 	{
 		ShellMeshComp->SetCollisionProfileName(TEXT("NoCollision"));
 		ShellMeshComp->UpdateCollisionProfile();
@@ -111,21 +108,13 @@ void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UP
 	{
 		AActor* HitActor = Hit.GetActor();
 
-		//If HitActor is a Tank just push the Tank, else create a Radial Impulse and try to push surrounding Actors
+		//If HitActor is a Tank, push the Tank and deal flat damage
 		if (HitActor->GetClass() == ATank::StaticClass())
 		{
-			Cast<ATank>(HitActor)->BodyStaticMesh->AddImpulseAtLocation(GetActorForwardVector() * DamageImpulse * 2, Hit.ImpactPoint);
+			Cast<ATank>(HitActor)->BodyStaticMesh->AddImpulseAtLocation(GetActorForwardVector() * Impulse * 2, Hit.ImpactPoint);
+			UGameplayStatics::ApplyDamage(HitActor, BaseDamage, GetInstigatorController(), GetInstigator(), DamageType);
+			PlayerHit = HitActor;
 		}
-		else 
-		{
-			FVector Location = GetActorLocation();
-			FRotator Rotation = GetActorRotation();
-			ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
-			Explosion->FireImpulse(DamageOuterRadius, DamageImpulse);
-		}
-
-		UGameplayStatics::ApplyRadialDamageWithFalloff(this, Damage, MinimumDamage, Hit.ImpactPoint, 
-			DamageInnerRadius, DamageOuterRadius, DamageFalloff, DamageType, TArray<AActor*>(), GetInstigator(), GetInstigatorController(), ECC_Visibility);
 
 		Destroy();
 	}
@@ -135,5 +124,18 @@ void ATankShell::Destroyed()
 {
 	Super::Destroyed();
 
-	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, GetActorLocation(), FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
+	FVector Location = GetActorLocation();
+	FRotator Rotation = GetActorRotation();
+
+	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, Location, Rotation, true, EPSCPoolMethod::AutoRelease);
+
+	//Do final radial impulse and damage on the server
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
+		if (Explosion)
+		{
+			Explosion->FireImpulseWithDamage(BaseDamage, DamageType, (AActor*)0, GetInstigatorController(), PlayerHit, OuterRadius, InnerRadius, Impulse, ERadialImpulseFalloff::RIF_Linear);
+		}
+	}
 }

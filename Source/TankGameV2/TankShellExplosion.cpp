@@ -3,6 +3,7 @@
 
 #include "TankShellExplosion.h"
 #include "Tank.h"
+#include "Kismet/GameplayStatics.h"
 
 ATankShellExplosion::ATankShellExplosion()
 {
@@ -10,12 +11,10 @@ ATankShellExplosion::ATankShellExplosion()
 	SetRootComponent(PrimitiveComp);
 }
 
-void ATankShellExplosion::FireImpulse(float Radius, float ImpulseForce)
+void ATankShellExplosion::FireImpulse(float Radius, float Impulse, ERadialImpulseFalloff Falloff)
 {
 	TArray<FHitResult> OutHits;
-
 	FVector MyLocation = GetActorLocation();
-
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
 
 	//Get TArray of things hit by the sphere sweep
@@ -25,15 +24,71 @@ void ATankShellExplosion::FireImpulse(float Radius, float ImpulseForce)
 	{
 		for (auto& Hit : OutHits)
 		{
-			AActor* HitActor = Hit.GetActor();
-			UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>((HitActor)->GetRootComponent());
+			UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>((Hit.GetActor())->GetRootComponent());
 
-			if (MeshComp)
+			//Apply impulse only if simulating physics
+			if (MeshComp && MeshComp->IsSimulatingPhysics())
 			{
-				MeshComp->AddRadialImpulse(MyLocation, Radius, ImpulseForce, ERadialImpulseFalloff::RIF_Linear, true);
+				MeshComp->AddRadialImpulse(MyLocation, Radius, Impulse, Falloff, true);
 			}
 		}
 	}
 		
+	Destroy();
+}
+
+void ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<class UDamageType> DamageType, AActor* DamageCauser, AController* EventInstigator, AActor* IgnoreActor, float OuterRadius, float InnerRadius, float Impulse, ERadialImpulseFalloff Falloff)
+{
+	TArray<FHitResult> OutHits;
+	FVector MyLocation = GetActorLocation();
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(OuterRadius);
+
+	//Get TArray of things hit by the sphere sweep
+	bool isHit = GetWorld()->SweepMultiByChannel(OutHits, MyLocation, MyLocation, FQuat::Identity, ECC_Visibility, Sphere);
+
+	if (isHit)
+	{
+		for (auto& Hit : OutHits)
+		{
+			AActor* HitActor = Hit.GetActor();
+
+			//Do not consider the IgnoreActor since they have already had damage and impulse applied
+			//Might not be the best way to compare Actors? Not sure
+			if (IgnoreActor != nullptr && HitActor->GetFName() == IgnoreActor->GetFName())
+			{
+				continue;
+			}
+
+			UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>((HitActor)->GetRootComponent());
+
+			if (MeshComp)
+			{
+				//Apply impulse only if simulating physics
+				if (MeshComp->IsSimulatingPhysics())
+				{
+					MeshComp->AddRadialImpulse(MyLocation, OuterRadius, Impulse, Falloff, true);
+				}
+
+				//Deal damage if the HitActor is a Tank
+				if (HitActor->GetClass() == ATank::StaticClass())
+				{
+					float Distance = FVector::Distance(MyLocation, Hit.ImpactPoint);
+
+					//Take no damage past [InnerRadius] distance
+					if (Distance <= 100.0f)
+					{
+						//Decrease the damage as the Tank is farther away
+						float Ratio = (OuterRadius - Distance) / OuterRadius;
+						float FinalDamage = BaseDamage * Ratio * Ratio;
+						if (FinalDamage >= 1.0f)
+						{
+							UGameplayStatics::ApplyDamage(HitActor, FinalDamage, EventInstigator, DamageCauser, DamageType);
+						}
+					}
+				}
+			}
+		}
+	}
+
 	Destroy();
 }

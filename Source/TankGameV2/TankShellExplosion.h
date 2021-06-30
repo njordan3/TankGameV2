@@ -17,7 +17,8 @@ class TANKGAMEV2_API ATankShellExplosion : public AActor
 public:
 	ATankShellExplosion();
 
-	void FireImpulse(float Radius = 400.f, float ImpulseForce = 500.f);
+	void FireImpulse(float Radius = 400.f, float ImpulseForce = 500.f, ERadialImpulseFalloff Falloff = ERadialImpulseFalloff::RIF_Linear);
+	void FireImpulseWithDamage(float Damage, TSubclassOf<class UDamageType> DamageType, AActor* DamageCauser, AController* EventInstigator, AActor* IgnoreActor, float OuterRadius = 400.f, float InnerRadius = 100.f, float ImpulseForce = 500.f, ERadialImpulseFalloff Falloff = ERadialImpulseFalloff::RIF_Linear);
 
 protected:
 	UStaticMeshComponent* PrimitiveComp;

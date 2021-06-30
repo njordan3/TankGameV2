@@ -47,28 +47,28 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Effects")
 		class UParticleSystemComponent* TracerEffect;
 
+	//Force of the explosion
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects")
-		float DamageImpulse;
+		float Impulse;
 
 	//The damage type and damage that will be done by this projectile
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Explosion")
 		TSubclassOf<class UDamageType> DamageType;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
-		float Damage;
+	//Max damage dealt by the explosion
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Explosion")
+		float BaseDamage;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
-		float MinimumDamage;
+	//Max radius for the explosion to deal damage
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Explosion")
+		float InnerRadius;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
-		float DamageInnerRadius;
-
-	//Is also the ImpulseRadius
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
-		float DamageOuterRadius;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Damage")
-		float DamageFalloff;
+	//Max radius of the explosion
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Explosion")
+		float OuterRadius;
 
 	void FireInDirection(FVector& Direction);
+
+private:
+	AActor* PlayerHit;
 };
