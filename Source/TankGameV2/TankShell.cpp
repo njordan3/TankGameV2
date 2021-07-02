@@ -27,6 +27,8 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
+	ShellMeshComp->SetCollisionProfileName(TEXT("TankShell"));
+	ShellMeshComp->SetGenerateOverlapEvents(true);
 	SetRootComponent(ShellMeshComp);
 
 	/*//Initialize Tank Shell Material ======================================================
@@ -80,7 +82,7 @@ void ATankShell::BeginPlay()
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
+		ShellMeshComp->OnComponentBeginOverlap.AddDynamic(this, &ATankShell::OnShellBeginOverlap);
 	}
 	else    //Remove client side collision
 	{
@@ -101,12 +103,11 @@ void ATankShell::FireInDirection(FVector& Direction)
 	ShellMovementComp->Velocity = Direction * ShellMovementComp->InitialSpeed;
 }
 
-// Function that is called when the projectile hits something.
-void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
+void ATankShell::OnShellBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (GetLocalRole() == ROLE_Authority)
+	if (GetLocalRole() == ROLE_Authority && OtherActor != GetInstigator())
 	{
-		HitPlayer(Hit.GetActor(), Hit.ImpactPoint);
+		HitPlayer(SweepResult.GetActor(), SweepResult.ImpactPoint);
 	}
 }
 

@@ -21,11 +21,10 @@ protected:
 
 	virtual void Destroyed() override;
 
-	// Function that is called when the projectile hits something.
-	UFUNCTION(Category = "Projectile")
-		void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
-
 	void HitPlayer(AActor* Player, FVector ImpulseLocation);
+
+	UFUNCTION()
+		void OnShellBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 public:	
 	// Called every frame

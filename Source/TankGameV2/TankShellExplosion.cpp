@@ -54,9 +54,7 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 		{
 			AActor* HitActor = Hit.GetActor();
 
-			//Do not consider the IgnoreActor since they have already had damage and impulse applied
-			//Might not be the best way to compare Actors? Not sure
-			if (IgnoreActor != nullptr && HitActor->GetFName() == IgnoreActor->GetFName())
+			if (IgnoreActor != nullptr && HitActor == IgnoreActor)
 			{
 				continue;
 			}
