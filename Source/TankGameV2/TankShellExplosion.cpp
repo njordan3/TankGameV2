@@ -37,8 +37,10 @@ void ATankShellExplosion::FireImpulse(float Radius, float Impulse, ERadialImpuls
 	Destroy();
 }
 
-void ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<class UDamageType> DamageType, AActor* DamageCauser, AController* EventInstigator, AActor* IgnoreActor, float OuterRadius, float InnerRadius, float Impulse, ERadialImpulseFalloff Falloff)
+bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<class UDamageType> DamageType, AActor* DamageCauser, AController* EventInstigator, AActor* IgnoreActor, float OuterRadius, float InnerRadius, float Impulse, ERadialImpulseFalloff Falloff)
 {
+	bool PlayerDamaged = false;
+
 	TArray<FHitResult> OutHits;
 	FVector MyLocation = GetActorLocation();
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(OuterRadius);
@@ -83,6 +85,7 @@ void ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 						if (FinalDamage >= 1.0f)
 						{
 							UGameplayStatics::ApplyDamage(HitActor, FinalDamage, EventInstigator, DamageCauser, DamageType);
+							PlayerDamaged = true;
 						}
 					}
 				}
@@ -91,4 +94,6 @@ void ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 	}
 
 	Destroy();
+
+	return PlayerDamaged;
 }

@@ -20,6 +20,8 @@ ATankShell::ATankShell()
 
 	bReplicates = true;
 
+	UpdateOverlaps(true);
+
 	//Initialize Tank Shell Static Mesh ===================================================
 	ShellMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShellMeshComp"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> ShellMesh(TEXT("/Game/TankMeshes/TankShell.TankShell"));
@@ -27,10 +29,7 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
-	}
+	ShellMeshComp->SetGenerateOverlapEvents(true);
 	SetRootComponent(ShellMeshComp);
 
 	/*//Initialize Tank Shell Material ======================================================
@@ -82,7 +81,31 @@ void ATankShell::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (GetLocalRole() < ROLE_Authority)	//Remove client side collision
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		TArray<AActor*> OverlappingActors;
+		GetOverlappingActors(OverlappingActors);
+
+		int32 ActorsHit = OverlappingActors.Num();
+
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%d"), ActorsHit));
+
+		if (ActorsHit == 0)
+		{
+			//Do nothing
+		}
+		else if (ActorsHit == 1)
+		{
+			HitPlayer(OverlappingActors[0], GetActorLocation());
+		}
+		else
+		{
+			Destroy();
+		}
+
+		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
+	}
+	else    //Remove client side collision
 	{
 		ShellMeshComp->SetCollisionProfileName(TEXT("NoCollision"));
 		ShellMeshComp->UpdateCollisionProfile();
@@ -106,17 +129,7 @@ void ATankShell::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UP
 {
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		AActor* HitActor = Hit.GetActor();
-
-		//If HitActor is a Tank, push the Tank and deal flat damage
-		if (HitActor->GetClass() == ATank::StaticClass())
-		{
-			Cast<ATank>(HitActor)->BodyStaticMesh->AddImpulseAtLocation(GetActorForwardVector() * Impulse * 2, Hit.ImpactPoint);
-			UGameplayStatics::ApplyDamage(HitActor, BaseDamage, GetInstigatorController(), GetInstigator(), DamageType);
-			PlayerHit = HitActor;
-		}
-
-		Destroy();
+		HitPlayer(Hit.GetActor(), Hit.ImpactPoint);
 	}
 }
 
@@ -132,10 +145,24 @@ void ATankShell::Destroyed()
 	//Do final radial impulse and damage on the server
 	if (GetLocalRole() == ROLE_Authority)
 	{
+		bool PlayerDamaged = false;
 		ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
 		if (Explosion)
 		{
-			Explosion->FireImpulseWithDamage(BaseDamage, DamageType, (AActor*)0, GetInstigatorController(), PlayerHit, OuterRadius, InnerRadius, Impulse, ERadialImpulseFalloff::RIF_Linear);
+			PlayerDamaged = Explosion->FireImpulseWithDamage(BaseDamage, DamageType, (AActor*)0, GetInstigatorController(), PlayerHit, OuterRadius, InnerRadius, Impulse, ERadialImpulseFalloff::RIF_Linear);
 		}
 	}
+}
+
+void ATankShell::HitPlayer(AActor* Player, FVector ImpulseLocation)
+{
+	//If HitActor is a Tank, push the Tank and deal flat damage
+	if (Player->GetClass() == ATank::StaticClass())
+	{
+		Cast<ATank>(Player)->BodyStaticMesh->AddImpulseAtLocation(GetActorForwardVector() * Impulse * 2, ImpulseLocation);
+		UGameplayStatics::ApplyDamage(Player, BaseDamage, GetInstigatorController(), GetInstigator(), DamageType);
+		PlayerHit = Player;
+	}
+
+	Destroy();
 }

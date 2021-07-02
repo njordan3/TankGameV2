@@ -25,6 +25,8 @@ protected:
 	UFUNCTION(Category = "Projectile")
 		void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
 
+	void HitPlayer(AActor* Player, FVector ImpulseLocation);
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

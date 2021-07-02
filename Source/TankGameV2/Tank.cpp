@@ -21,7 +21,7 @@ ATank::ATank()
 
 	ProjectileClass = ATankShell::StaticClass();
 
-	MaxHealth = 100.0f;
+	MaxHealth = 10000000.0f;
 	CurrentHealth = MaxHealth;
 
 	FireRate = 0.25f;
@@ -44,6 +44,9 @@ ATank::ATank()
 	bAlwaysRelevant = true; 
 	bNetLoadOnClient = true;
 
+	UpdateOverlapsMethodDuringLevelStreaming = EActorUpdateOverlapsMethod::AlwaysUpdate;
+	bGenerateOverlapEventsDuringLevelStreaming = true;
+
 	//Initialize Tank Body Static Mesh ============================================
 	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/TankMeshes/TankBody.TankBody"));
@@ -54,6 +57,7 @@ ATank::ATank()
 	BodyStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
 	BodyStaticMesh->SetAngularDamping(AngularDamping);
 	BodyStaticMesh->SetLinearDamping(LinearDamping);
+	BodyStaticMesh->SetCollisionProfileName(TEXT("PhysicsActor"));
 	SetRootComponent(BodyStaticMesh);
 
 	//Change Mass Properties
@@ -93,7 +97,21 @@ ATank::ATank()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
 	UStaticMesh* GunAsset = GunMesh.Object;
 	GunStaticMesh->SetStaticMesh(GunAsset);
+	GunStaticMesh->SetEnableGravity(false);
+	GunStaticMesh->bApplyImpulseOnDamage = false;
+	GunStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
+	GunStaticMesh->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	GunStaticMesh->SetGenerateOverlapEvents(true);
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		GunStaticMesh->OnComponentBeginOverlap.AddDynamic(this, &ATank::OnGunBeginOverlap);
+		GunStaticMesh->OnComponentEndOverlap.AddDynamic(this, &ATank::OnGunEndOverlap);
+	}
 	GunStaticMesh->SetIsReplicated(true);	//Replicate Gun Static Mesh instead of custom interpolation because it doesn't need interpolation
+
+	//Change Mass Properties
+	GunStaticMesh->SetMassOverrideInKg(NAME_None, 0.0f);
+	GunStaticMesh->GetBodyInstance()->UpdateMassProperties();
 
 	//Initialize Front Right Spring Component =====================================
 	FrontRightSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("FrontRightSpringComponent"));
@@ -438,7 +456,7 @@ void ATank::HandleShellFire_Implementation()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = this;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+	//SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
 
 	// Spawn the projectile at the muzzle.
 	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
@@ -450,4 +468,24 @@ void ATank::HandleShellFire_Implementation()
 		Projectile->FireInDirection(Direction);
 	}
 
+}
+
+void ATank::OnGunBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Overlap Begin"));
+
+	if (OtherActor && (OtherActor != this) && OtherComp)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Overlap Begin"));
+	}
+}
+
+void ATank::OnGunEndOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Overlap End"));
+
+	if (OtherActor && (OtherActor != this) && OtherComp)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Overlap End"));
+	}
 }
