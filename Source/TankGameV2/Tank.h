@@ -187,7 +187,11 @@ private:
 
 	FSmoothPhysicsState ProxyStates[PROXY_STATE_ARRAY_SIZE];
 
-	int ProxyStateCount;
+	int32 ProxyStateCount;
+	int32 NumberOfOverlappingActors;
+
+	//Tank Gun is considered unblocked if there are no overlapping Actors, or if the only overlapping Actor is another Tank or a Tank Shell
+	bool bGunIsUnblocked;
 
 	void ClientSimulateTankMovement();
 

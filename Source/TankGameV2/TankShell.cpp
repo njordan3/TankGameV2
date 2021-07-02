@@ -20,8 +20,6 @@ ATankShell::ATankShell()
 
 	bReplicates = true;
 
-	UpdateOverlaps(true);
-
 	//Initialize Tank Shell Static Mesh ===================================================
 	ShellMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShellMeshComp"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> ShellMesh(TEXT("/Game/TankMeshes/TankShell.TankShell"));
@@ -29,7 +27,6 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
-	ShellMeshComp->SetGenerateOverlapEvents(true);
 	SetRootComponent(ShellMeshComp);
 
 	/*//Initialize Tank Shell Material ======================================================
@@ -83,26 +80,6 @@ void ATankShell::BeginPlay()
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		TArray<AActor*> OverlappingActors;
-		GetOverlappingActors(OverlappingActors);
-
-		int32 ActorsHit = OverlappingActors.Num();
-
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%d"), ActorsHit));
-
-		if (ActorsHit == 0)
-		{
-			//Do nothing
-		}
-		else if (ActorsHit == 1)
-		{
-			HitPlayer(OverlappingActors[0], GetActorLocation());
-		}
-		else
-		{
-			Destroy();
-		}
-
 		ShellMeshComp->OnComponentHit.AddDynamic(this, &ATankShell::OnHit);
 	}
 	else    //Remove client side collision

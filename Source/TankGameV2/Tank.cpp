@@ -37,6 +37,9 @@ ATank::ATank()
 	LinearDamping = 0.5f;
 	DriftCoefficient = 1.0f;
 
+	NumberOfOverlappingActors = 0;
+	bGunIsUnblocked = true;
+
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
@@ -449,43 +452,69 @@ float ATank::GetGroundedSpringRatio()
 
 void ATank::HandleShellFire_Implementation()
 {
-	FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
-	FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
-
-	UWorld* World = GetWorld();
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.Instigator = this;
-	//SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
-
-	// Spawn the projectile at the muzzle.
-	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-
-	if (Projectile)
+	if (bGunIsUnblocked)
 	{
-		// Set the projectile's initial trajectory.
-		FVector Direction = MuzzleRotation.Vector();
-		Projectile->FireInDirection(Direction);
-	}
+		FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
+		FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
 
+		UWorld* World = GetWorld();
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.Instigator = this;
+		//SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+
+		// Spawn the projectile at the muzzle.
+		ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
+
+		if (Projectile)
+		{
+			// Set the projectile's initial trajectory.
+			FVector Direction = MuzzleRotation.Vector();
+			Projectile->FireInDirection(Direction);
+		}
+	}
 }
 
 void ATank::OnGunBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Overlap Begin"));
-
-	if (OtherActor && (OtherActor != this) && OtherComp)
+	if (GetLocalRole() == ROLE_Authority)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Overlap Begin"));
+		if (OtherActor && (OtherActor != this) && OtherComp)
+		{
+			NumberOfOverlappingActors++;
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Begin: %d"), NumberOfOverlappingActors));
+
+			//Tank Gun is considered unblocked if there are no overlapping Actors, or if the only overlapping Actor is another Tank or a Tank Shell
+			bGunIsUnblocked = (NumberOfOverlappingActors == 1 && (OtherActor->GetClass() == ATank::StaticClass() || OtherActor->GetClass() == ATankShell::StaticClass()));
+		}
 	}
 }
 
-void ATank::OnGunEndOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void ATank::OnGunEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Overlap End"));
-
-	if (OtherActor && (OtherActor != this) && OtherComp)
+	if (GetLocalRole() == ROLE_Authority)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Overlap End"));
+		if (OtherActor && (OtherActor != this) && OtherComp)
+		{
+			NumberOfOverlappingActors--;
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("End: %d"), NumberOfOverlappingActors));
+
+			//Tank Gun is considered unblocked if there are no overlapping Actors, or if the only overlapping Actor is another Tank or a Tank Shell
+			if (NumberOfOverlappingActors == 0)
+			{
+				bGunIsUnblocked = true;
+			}
+			else if (NumberOfOverlappingActors == 1)
+			{
+				TArray<AActor*> OverlappingActors;
+				GetOverlappingActors(OverlappingActors);
+
+				bGunIsUnblocked = (OverlappingActors[0]->GetClass() == ATank::StaticClass() || OtherActor->GetClass() == ATankShell::StaticClass());
+			}
+			else
+			{
+				bGunIsUnblocked = false;
+			}
+		}
 	}
 }
