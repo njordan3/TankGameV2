@@ -129,12 +129,6 @@ public:
 	UFUNCTION(Server, Reliable)
 		void HandleShellFire();
 
-	UFUNCTION()
-		void OnGunBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-		void OnGunEndOverlap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
 	UFUNCTION(BlueprintPure, Category = "Health")
 		FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 
@@ -188,10 +182,9 @@ private:
 	FSmoothPhysicsState ProxyStates[PROXY_STATE_ARRAY_SIZE];
 
 	int32 ProxyStateCount;
-	int32 NumberOfOverlappingActors;
 
-	//Tank Gun is considered unblocked if there are no overlapping Actors, or if the only overlapping Actor is another Tank or a Tank Shell
-	bool bGunIsUnblocked;
+	//Returns true if there are no overlapping Actors or if the only overlapping Actors are other Tanks or are Tank Shells
+	bool GunHasValidOverlapping();
 
 	void ClientSimulateTankMovement();
 

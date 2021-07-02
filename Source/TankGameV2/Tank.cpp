@@ -37,9 +37,6 @@ ATank::ATank()
 	LinearDamping = 0.5f;
 	DriftCoefficient = 1.0f;
 
-	NumberOfOverlappingActors = 0;
-	bGunIsUnblocked = true;
-
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
@@ -105,11 +102,6 @@ ATank::ATank()
 	GunStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
 	GunStaticMesh->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 	GunStaticMesh->SetGenerateOverlapEvents(true);
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		GunStaticMesh->OnComponentBeginOverlap.AddDynamic(this, &ATank::OnGunBeginOverlap);
-		GunStaticMesh->OnComponentEndOverlap.AddDynamic(this, &ATank::OnGunEndOverlap);
-	}
 	GunStaticMesh->SetIsReplicated(true);	//Replicate Gun Static Mesh instead of custom interpolation because it doesn't need interpolation
 
 	//Change Mass Properties
@@ -452,7 +444,7 @@ float ATank::GetGroundedSpringRatio()
 
 void ATank::HandleShellFire_Implementation()
 {
-	if (bGunIsUnblocked)
+	if (GunHasValidOverlapping())
 	{
 		FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
 		FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
@@ -474,46 +466,19 @@ void ATank::HandleShellFire_Implementation()
 	}
 }
 
-void ATank::OnGunBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+bool ATank::GunHasValidOverlapping()
 {
-	if (GetLocalRole() == ROLE_Authority)
+	bool Valid = true;
+
+	TArray<AActor*> OverlappingActors;
+	GetOverlappingActors(OverlappingActors);
+
+	for (auto& Actor : OverlappingActors)
 	{
-		if (OtherActor && (OtherActor != this) && OtherComp)
-		{
-			NumberOfOverlappingActors++;
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Begin: %d"), NumberOfOverlappingActors));
+		Valid = (Actor->GetClass() == ATank::StaticClass() || Actor->GetClass() == ATankShell::StaticClass());
 
-			//Tank Gun is considered unblocked if there are no overlapping Actors, or if the only overlapping Actor is another Tank or a Tank Shell
-			bGunIsUnblocked = (NumberOfOverlappingActors == 1 && (OtherActor->GetClass() == ATank::StaticClass() || OtherActor->GetClass() == ATankShell::StaticClass()));
-		}
+		if (!Valid) break;
 	}
-}
 
-void ATank::OnGunEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		if (OtherActor && (OtherActor != this) && OtherComp)
-		{
-			NumberOfOverlappingActors--;
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("End: %d"), NumberOfOverlappingActors));
-
-			//Tank Gun is considered unblocked if there are no overlapping Actors, or if the only overlapping Actor is another Tank or a Tank Shell
-			if (NumberOfOverlappingActors == 0)
-			{
-				bGunIsUnblocked = true;
-			}
-			else if (NumberOfOverlappingActors == 1)
-			{
-				TArray<AActor*> OverlappingActors;
-				GetOverlappingActors(OverlappingActors);
-
-				bGunIsUnblocked = (OverlappingActors[0]->GetClass() == ATank::StaticClass() || OtherActor->GetClass() == ATankShell::StaticClass());
-			}
-			else
-			{
-				bGunIsUnblocked = false;
-			}
-		}
-	}
+	return Valid;
 }
