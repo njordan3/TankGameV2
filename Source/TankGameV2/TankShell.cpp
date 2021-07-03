@@ -18,8 +18,6 @@ ATankShell::ATankShell()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	bReplicates = true;
-
 	//Initialize Tank Shell Static Mesh ===================================================
 	ShellMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShellMeshComp"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> ShellMesh(TEXT("/Game/TankMeshes/TankShell.TankShell"));
@@ -27,6 +25,7 @@ ATankShell::ATankShell()
 	{
 		ShellMeshComp->SetStaticMesh(ShellMesh.Object);
 	}
+	ShellMeshComp->OnComponentBeginOverlap.AddDynamic(this, &ATankShell::OnShellBeginOverlap);
 	ShellMeshComp->SetCollisionProfileName(TEXT("TankShell"));
 	ShellMeshComp->SetGenerateOverlapEvents(true);
 	SetRootComponent(ShellMeshComp);
@@ -79,16 +78,6 @@ ATankShell::ATankShell()
 void ATankShell::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		ShellMeshComp->OnComponentBeginOverlap.AddDynamic(this, &ATankShell::OnShellBeginOverlap);
-	}
-	else    //Remove client side collision
-	{
-		ShellMeshComp->SetCollisionProfileName(TEXT("NoCollision"));
-		ShellMeshComp->UpdateCollisionProfile();
-	}
 }
 
 // Called every frame
@@ -105,7 +94,7 @@ void ATankShell::FireInDirection(FVector& Direction)
 
 void ATankShell::OnShellBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (GetLocalRole() == ROLE_Authority && OtherActor != GetInstigator())
+	if (OtherActor != GetInstigator())
 	{
 		HitPlayer(SweepResult.GetActor(), SweepResult.ImpactPoint);
 	}
@@ -135,7 +124,7 @@ void ATankShell::Destroyed()
 void ATankShell::HitPlayer(AActor* Player, FVector ImpulseLocation)
 {
 	//If HitActor is a Tank, push the Tank and deal flat damage
-	if (Player->GetClass() == ATank::StaticClass())
+	if (GetLocalRole() == ROLE_Authority && Player->GetClass() == ATank::StaticClass())
 	{
 		Cast<ATank>(Player)->BodyStaticMesh->AddImpulseAtLocation(GetActorForwardVector() * Impulse * 2, ImpulseLocation);
 		UGameplayStatics::ApplyDamage(Player, BaseDamage, GetInstigatorController(), GetInstigator(), DamageType);

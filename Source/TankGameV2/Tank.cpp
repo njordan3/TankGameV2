@@ -44,9 +44,6 @@ ATank::ATank()
 	bAlwaysRelevant = true; 
 	bNetLoadOnClient = true;
 
-	UpdateOverlapsMethodDuringLevelStreaming = EActorUpdateOverlapsMethod::AlwaysUpdate;
-	bGenerateOverlapEventsDuringLevelStreaming = true;
-
 	//Initialize Tank Body Static Mesh ============================================
 	BodyStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyStaticMesh"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> BodyMesh(TEXT("/Game/TankMeshes/TankBody.TankBody"));
@@ -442,27 +439,41 @@ float ATank::GetGroundedSpringRatio()
 	) / 4.0f;
 }
 
-void ATank::HandleShellFire_Implementation()
+void ATank::FireShell()
+{
+	FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
+	FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
+
+	UWorld* World = GetWorld();
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+
+	// Spawn the projectile at the muzzle.
+	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
+
+	if (Projectile)
+	{
+		// Set the projectile's initial trajectory.
+		FVector Direction = MuzzleRotation.Vector();
+		Projectile->FireInDirection(Direction);
+	}
+}
+
+void ATank::ServerHandleShellFire_Implementation()
 {
 	if (GunHasValidOverlapping())
 	{
-		FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
-		FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
+		MulticastHandleShellFire();
+	}
+}
 
-		UWorld* World = GetWorld();
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = this;
-		SpawnParams.Instigator = this;
-
-		// Spawn the projectile at the muzzle.
-		ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-
-		if (Projectile)
-		{
-			// Set the projectile's initial trajectory.
-			FVector Direction = MuzzleRotation.Vector();
-			Projectile->FireInDirection(Direction);
-		}
+void ATank::MulticastHandleShellFire_Implementation()
+{
+	//Don't fire again if this is the client who initially fired
+	if (!IsLocallyControlled())
+	{
+		FireShell();
 	}
 }
 

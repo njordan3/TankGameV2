@@ -125,9 +125,13 @@ public:
 	UFUNCTION()
 		void CounteractDrifting();
 
-	//RPC function for spawning projectiles.
+	void FireShell();
+
 	UFUNCTION(Server, Reliable)
-		void HandleShellFire();
+		void ServerHandleShellFire();
+
+	UFUNCTION(NetMulticast, Reliable)
+		void MulticastHandleShellFire();
 
 	UFUNCTION(BlueprintPure, Category = "Health")
 		FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
@@ -159,32 +163,32 @@ public:
 
 	float GetGroundedSpringRatio();
 
+	//Returns true if there are no overlapping Actors or if the only overlapping Actors are other Tanks or are Tank Shells
+	bool GunHasValidOverlapping();
+
 	UPROPERTY(EditAnywhere)
 		class UStaticMeshComponent* BodyStaticMesh;
 
 	UPROPERTY(EditAnywhere)
-		class UStaticMeshComponent* GunStaticMesh;
+		UStaticMeshComponent* GunStaticMesh;
 
 	UPROPERTY(EditAnywhere)
 		class USpringComponent* FrontRightSpringComp;
 
 	UPROPERTY(EditAnywhere)
-		class USpringComponent* FrontLeftSpringComp;
+		USpringComponent* FrontLeftSpringComp;
 
 	UPROPERTY(EditAnywhere)
-		class USpringComponent* BackRightSpringComp;
+		USpringComponent* BackRightSpringComp;
 
 	UPROPERTY(EditAnywhere)
-		class USpringComponent* BackLeftSpringComp;
+		USpringComponent* BackLeftSpringComp;
 private:
 	FVector DefaultCenterOfMass;
 
 	FSmoothPhysicsState ProxyStates[PROXY_STATE_ARRAY_SIZE];
 
 	int32 ProxyStateCount;
-
-	//Returns true if there are no overlapping Actors or if the only overlapping Actors are other Tanks or are Tank Shells
-	bool GunHasValidOverlapping();
 
 	void ClientSimulateTankMovement();
 
