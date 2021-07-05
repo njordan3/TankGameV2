@@ -18,10 +18,27 @@ public:
 
 	ATankGameV2GameModeBase();
 
-	virtual void StartPlay() override;
+	virtual void BeginPlay() override;
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
+	void Respawn(AController* Controller);
+
 	/** Used for naming bots */
 	int NextBotNameID;
+
+	float RespawnTime;
+
+protected:
+	TArray<class ATankSpawnPoint*> SpawnPoints;
+
+	class ATankSpawnPoint* GetSpawnPoint();
+	
+	FTimerHandle RespawnHandle;
+
+	UFUNCTION()
+		void Spawn(APlayerController* Controller);
+
+private:
+	bool bHasBegun;
 };

@@ -5,6 +5,7 @@
 #include "TankShell.h"
 #include "TankController.h"
 #include "TankState.h"
+#include "TankGameV2GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -21,7 +22,7 @@ ATank::ATank()
 
 	ProjectileClass = ATankShell::StaticClass();
 
-	MaxHealth = 10000000.0f;
+	MaxHealth = 100.0f;
 	CurrentHealth = MaxHealth;
 
 	FireRate = 0.25f;
@@ -99,7 +100,7 @@ ATank::ATank()
 	GunStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
 	GunStaticMesh->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 	GunStaticMesh->SetGenerateOverlapEvents(true);
-	GunStaticMesh->SetIsReplicated(true);	//Replicate Gun Static Mesh instead of custom interpolation because it doesn't need interpolation
+	//GunStaticMesh->SetIsReplicated(true);	//Replicate Gun Static Mesh instead of custom interpolation because it doesn't need interpolation
 
 	//Change Mass Properties
 	GunStaticMesh->SetMassOverrideInKg(NAME_None, 0.0f);
@@ -176,9 +177,13 @@ void ATank::Tick(float DeltaTime)
 	else
 	{
 		// Servers should simulate the physics freely and replicate the orientation
-		ServerPhysicsState.Pos = GetActorLocation();
+		ServerPhysicsState.BodyPos = GetActorLocation();
 		ServerPhysicsState.BodyRot = GetActorRotation();
-		ServerPhysicsState.Vel = BodyStaticMesh->GetComponentVelocity();
+		ServerPhysicsState.BodyVel = BodyStaticMesh->GetComponentVelocity();
+
+		ServerPhysicsState.GunPos = GunStaticMesh->GetComponentLocation();
+		ServerPhysicsState.GunRot = GunStaticMesh->GetComponentRotation();
+
 		ServerPhysicsState.Timestamp = ATankController::GetLocalTime();
 	}
 }
@@ -200,7 +205,8 @@ void ATank::ClientSimulateTankMovement()
 		// We don't know yet know what the time is on the server yet so the timestamps
 		// of the proxy states mean nothing; that or we simply don't have any proxy
 		// states yet. Don't do any interpolation.
-		BodyStaticMesh->SetWorldLocationAndRotation(ServerPhysicsState.Pos, ServerPhysicsState.BodyRot);
+		BodyStaticMesh->SetWorldLocationAndRotation(ServerPhysicsState.BodyPos, ServerPhysicsState.BodyRot);
+		GunStaticMesh->SetWorldLocationAndRotation(ServerPhysicsState.GunPos, ServerPhysicsState.GunRot);
 	}
 	else
 	{
@@ -232,10 +238,16 @@ void ATank::ClientSimulateTankMovement()
 					if (Length > 1)
 						Time = (double)(InterpolationTime - LHS.Timestamp) / (double)Length;
 
-					FVector TargetPos = FMath::Lerp(LHS.Pos, RHS.Pos, Time);
+					FVector TargetBodyPos = FMath::Lerp(LHS.BodyPos, RHS.BodyPos, Time);
 					FRotator TargetBodyRot = FMath::Lerp(LHS.BodyRot, RHS.BodyRot, Time);
-			
-					BodyStaticMesh->SetWorldLocationAndRotation(TargetPos, TargetBodyRot);
+					BodyStaticMesh->SetWorldLocationAndRotation(TargetBodyPos, TargetBodyRot);
+
+					if (!IsLocallyControlled())
+					{
+						FVector TargetGunPos = FMath::Lerp(LHS.GunPos, RHS.GunPos, Time);
+						FRotator TargetGunRot = FMath::Lerp(LHS.GunRot, RHS.GunRot, Time);
+						GunStaticMesh->SetWorldLocationAndRotation(TargetGunPos, TargetGunRot);
+					}
 					
 					return;
 				}
@@ -250,10 +262,13 @@ void ATank::ClientSimulateTankMovement()
 			// Don't extrapolate for more than [ExtrapolationLimit] milliseconds
 			if (ExtrapolationLength < ExtrapolationLimit)
 			{
-				FVector Pos = Latest.Pos + Latest.Vel * ((float)ExtrapolationLength * 0.001f);
+				FVector BodyPos = Latest.BodyPos + Latest.BodyVel * ((float)ExtrapolationLength * 0.001f);
 				FRotator BodyRot = Latest.BodyRot;
+				BodyStaticMesh->SetWorldLocationAndRotation(BodyPos, BodyRot);
 
-				BodyStaticMesh->SetWorldLocationAndRotation(Pos, BodyRot);
+				FVector GunPos = Latest.GunPos + Latest.BodyVel * ((float)ExtrapolationLength * 0.001f);
+				FRotator GunRot = Latest.GunRot;
+				GunStaticMesh->SetWorldLocationAndRotation(GunPos, GunRot);
 			}
 			else
 			{
@@ -354,13 +369,17 @@ void ATank::OnRep_CurrentHealth()
 void ATank::OnHealthUpdate()
 {
 	bool Dead = CurrentHealth <= 0;
+	AController* PC = GetController();
 
-	//Client-specific functionality
-	if (IsLocallyControlled())
+	if (IsLocallyControlled() && GetLocalRole() < ROLE_Authority)
 	{
 		if (Dead)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You have been killed."));
+			if (PC != nullptr)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You have been killed."));
+				PC->UnPossess();
+			}
 		}
 		else
 		{
@@ -368,15 +387,48 @@ void ATank::OnHealthUpdate()
 			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
 		}
 	}
-
-	//Server-specific functionality
+	
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		if (Dead)
 		{
-			Destroy();
+			Cast<ATankGameV2GameModeBase>(GetWorld()->GetAuthGameMode())->Respawn(PC);
+			if (!GetWorld()->GetTimerManager().IsTimerActive(TankDestroyTimer))
+			{
+				GetWorld()->GetTimerManager().SetTimer(TankDestroyTimer, this, &ATank::CallDestroy, 5.0f, false);
+
+				//GunStaticMesh->GetBodySetup()->AggGeom.BoxElems.Empty();
+				//GunStaticMesh->SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
+				//GunStaticMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+				GunStaticMesh->SetMassOverrideInKg(NAME_None, 100.0f);
+				GunStaticMesh->GetBodyInstance()->UpdateMassProperties();
+				GunStaticMesh->SetCollisionProfileName(TEXT("PhysicsActor"));
+				GunStaticMesh->DetachFromParent();
+				GunStaticMesh->SetSimulatePhysics(true);
+				GunStaticMesh->SetEnableGravity(true);
+				GunStaticMesh->AddImpulse(BodyStaticMesh->GetUpVector() * 1000.0f);
+			}
+
+			if (IsLocallyControlled())
+			{
+				if (PC != nullptr)
+				{
+					GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You have been killed."));
+					PC->UnPossess();
+				}
+			}
+		}
+		else
+		{
+			FString HealthMessage = FString::Printf(TEXT("You now have %f health remaining."), CurrentHealth);
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
 		}
 	}
+}
+
+void ATank::CallDestroy()
+{
+	Destroy();
 }
 
 void ATank::SetCurrentHealth(float HealthValue)

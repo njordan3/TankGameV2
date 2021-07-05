@@ -16,18 +16,26 @@ struct FSmoothPhysicsState
 	UPROPERTY()
 		uint64 Timestamp;
 	UPROPERTY()
-		FVector Pos;
+		FVector BodyPos;
 	UPROPERTY()
-		FVector Vel;
+		FVector BodyVel;
 	UPROPERTY()
 		FRotator BodyRot;
+	UPROPERTY()
+		FVector GunPos;
+	UPROPERTY()
+		FRotator GunRot;
 
 	FSmoothPhysicsState()
 	{
 		Timestamp = 0;
-		Pos = FVector::ZeroVector;
-		Vel = FVector::ZeroVector;
+		
+		BodyPos = FVector::ZeroVector;
+		BodyVel = FVector::ZeroVector;
 		BodyRot = FRotator::ZeroRotator;
+
+		GunPos = FVector::ZeroVector;
+		GunRot = FRotator::ZeroRotator;
 	}
 };
 
@@ -194,4 +202,7 @@ private:
 
 	AController* LastDamageInstigator;
 	AActor* LastDamageCauser;
+
+	FTimerHandle TankDestroyTimer;
+	void CallDestroy();
 };

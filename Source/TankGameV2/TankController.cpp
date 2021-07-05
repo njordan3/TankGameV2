@@ -123,8 +123,7 @@ void ATankController::StartShellFire()
 		if (!bIsFiring && OwnerTank->GunHasValidOverlapping())
 		{
 			bIsFiring = true;
-			UWorld* World = GetWorld();
-			World->GetTimerManager().SetTimer(FiringTimer, this, &ATankController::StopShellFire, OwnerTank->GetFireRate(), false);
+			GetWorld()->GetTimerManager().SetTimer(FiringTimer, this, &ATankController::StopShellFire, OwnerTank->GetFireRate(), false);
 			OwnerTank->FireShell();
 			OwnerTank->ServerHandleShellFire();
 		}
