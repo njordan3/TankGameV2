@@ -38,6 +38,8 @@ ATank::ATank()
 	LinearDamping = 0.5f;
 	DriftCoefficient = 1.0f;
 
+	DestroyTime = 5.0f;
+
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
@@ -100,7 +102,6 @@ ATank::ATank()
 	GunStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
 	GunStaticMesh->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 	GunStaticMesh->SetGenerateOverlapEvents(true);
-	//GunStaticMesh->SetIsReplicated(true);	//Replicate Gun Static Mesh instead of custom interpolation because it doesn't need interpolation
 
 	//Change Mass Properties
 	GunStaticMesh->SetMassOverrideInKg(NAME_None, 0.0f);
@@ -371,6 +372,7 @@ void ATank::OnHealthUpdate()
 	bool Dead = CurrentHealth <= 0;
 	AController* PC = GetController();
 
+	//Client
 	if (IsLocallyControlled() && GetLocalRole() < ROLE_Authority)
 	{
 		if (Dead)
@@ -388,27 +390,21 @@ void ATank::OnHealthUpdate()
 		}
 	}
 	
+	//Server
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		if (Dead)
 		{
-			Cast<ATankGameV2GameModeBase>(GetWorld()->GetAuthGameMode())->Respawn(PC);
 			if (!GetWorld()->GetTimerManager().IsTimerActive(TankDestroyTimer))
 			{
-				GetWorld()->GetTimerManager().SetTimer(TankDestroyTimer, this, &ATank::CallDestroy, 5.0f, false);
-
-				//GunStaticMesh->GetBodySetup()->AggGeom.BoxElems.Empty();
-				//GunStaticMesh->SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
-				//GunStaticMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-				GunStaticMesh->SetMassOverrideInKg(NAME_None, 100.0f);
-				GunStaticMesh->GetBodyInstance()->UpdateMassProperties();
-				GunStaticMesh->SetCollisionProfileName(TEXT("PhysicsActor"));
-				GunStaticMesh->DetachFromParent();
-				GunStaticMesh->SetSimulatePhysics(true);
-				GunStaticMesh->SetEnableGravity(true);
-				GunStaticMesh->AddImpulse(BodyStaticMesh->GetUpVector() * 1000.0f);
+				//Respawn and Possess new Tank Actor on a timer
+				Cast<ATankGameV2GameModeBase>(GetWorld()->GetAuthGameMode())->Respawn(PC);
+				//Despawn Tank Actor on a timer
+				GetWorld()->GetTimerManager().SetTimer(TankDestroyTimer, this, &ATank::CallDestroy, DestroyTime, false);
 			}
 
+			//Unposses the Server Host here because the OnHealthUpdate() function is called on the Server first
+			//and the Player Controller needs to be unpossed AFTER setting a timer to respawn
 			if (IsLocallyControlled())
 			{
 				if (PC != nullptr)

@@ -204,5 +204,6 @@ private:
 	AActor* LastDamageCauser;
 
 	FTimerHandle TankDestroyTimer;
+	float DestroyTime;
 	void CallDestroy();
 };
