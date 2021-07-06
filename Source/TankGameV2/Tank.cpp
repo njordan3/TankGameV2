@@ -181,10 +181,8 @@ void ATank::Tick(float DeltaTime)
 		ServerPhysicsState.BodyPos = GetActorLocation();
 		ServerPhysicsState.BodyRot = GetActorRotation();
 		ServerPhysicsState.BodyVel = BodyStaticMesh->GetComponentVelocity();
-
 		ServerPhysicsState.GunPos = GunStaticMesh->GetComponentLocation();
 		ServerPhysicsState.GunRot = GunStaticMesh->GetComponentRotation();
-
 		ServerPhysicsState.Timestamp = ATankController::GetLocalTime();
 	}
 }
@@ -308,32 +306,41 @@ void ATank::OnRep_ServerPhysicsState()
 
 void ATank::MoveForward_Implementation(float ForwardInput, float Yaw)
 {
-	FVector ForwardVector = GetActorForwardVector();
-	FVector RightVector = GetActorRightVector();
-	FVector UpVector = GetActorUpVector();
+	if (ForwardInput != 0.0f)
+	{
+		FVector ForwardVector = GetActorForwardVector();
+		FVector RightVector = GetActorRightVector();
+		FVector UpVector = GetActorUpVector();
 
-	//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
-	FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
-	//Calculate the force and reduce it by the ratio of however many Springs are grounded
-	FVector Force = Direction * ForwardInput * ForwardForce * GetGroundedSpringRatio();
-	//Calculate location to add the force. The offsets add a "bounciness" 
-	//to accelerating and braking by moving the force location slightly away from the local center
-	FVector Location = GetActorLocation() +
-		ForwardForceOffset.X * ForwardVector +
-		ForwardForceOffset.Y * RightVector +
-		ForwardForceOffset.Z * UpVector;
+		//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
+		FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
+		//Calculate the force and reduce it by the ratio of however many Springs are grounded
+		FVector Force = Direction * ForwardInput * ForwardForce * GetGroundedSpringRatio();
+		//Calculate location to add the force. The offsets add a "bounciness" 
+		//to accelerating and braking by moving the force location slightly away from the local center
+		FVector Location = GetActorLocation() +
+			ForwardForceOffset.X * ForwardVector +
+			ForwardForceOffset.Y * RightVector +
+			ForwardForceOffset.Z * UpVector;
 
-	BodyStaticMesh->AddImpulseAtLocation(Force, Location);
+		BodyStaticMesh->AddImpulseAtLocation(Force, Location);
 
-	CounteractDrifting();
+		CounteractDrifting();
 
-	SetGunRotation(Yaw);
+		SetGunRotation(Yaw);
+	}
+	else
+	{
+		RedirectVelocityForward();
+	}
 }
 
 void ATank::RotateBody_Implementation(float RotationInput, float Yaw)
 {
 	FVector Torque = GetActorUpVector() * RotationInput * TurnTorque * GetGroundedSpringRatio();
 	BodyStaticMesh->AddAngularImpulse(Torque);
+
+	RedirectVelocityForward();
 
 	SetGunRotation(Yaw);
 }
@@ -360,6 +367,20 @@ void ATank::CounteractDrifting()
 	float DriftAmount = FVector::DotProduct(GetVelocity(), RightVector);
 	FVector AntiDriftForce = RightVector * -DriftAmount * DriftCoefficient;
 	BodyStaticMesh->AddImpulse(AntiDriftForce);
+}
+
+void ATank::RedirectVelocityForward()
+{
+	//Move velocity to run along the forward vector
+	if (GetGroundedSpringRatio() == 1.0f)
+	{
+		FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(GetActorForwardVector(), GetDirectedSuspensionNormal());
+
+		float DriftAmount = FVector::DotProduct(GetVelocity(), Direction);
+		FVector Redirect = Direction * DriftAmount;
+
+		BodyStaticMesh->SetAllPhysicsLinearVelocity(Redirect);
+	}
 }
 
 void ATank::OnRep_CurrentHealth()

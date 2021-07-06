@@ -90,11 +90,8 @@ void ATankController::MoveForward(float Value)
 
 	if (OwnerTank != nullptr && IsLocalController())
 	{
-		//Forward Movement
-		if (ForwardInput != 0.0f)
-		{
-			OwnerTank->MoveForward(ForwardInput, MouseYaw);
-		}
+		//Send input whether the button is pressed or not so that the velocity gets redirected toward the forward vector
+		OwnerTank->MoveForward(ForwardInput, MouseYaw);
 	}
 }
 

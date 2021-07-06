@@ -71,6 +71,13 @@ protected:
 	UFUNCTION()
 		void OnRep_ServerPhysicsState();
 
+	//Move velocity to run along the forward vector
+	UFUNCTION()
+		void RedirectVelocityForward();
+
+	UFUNCTION()
+		void CounteractDrifting();
+
 	UPROPERTY(EditAnywhere)
 		class USpringArmComponent* CameraSpringArmComp;
 
@@ -129,9 +136,6 @@ public:
 
 	UFUNCTION()
 		void SetGunRotation(float Yaw);
-
-	UFUNCTION()
-		void CounteractDrifting();
 
 	void FireShell();
 
