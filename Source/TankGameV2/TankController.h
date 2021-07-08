@@ -6,6 +6,27 @@
 #include "GameFramework/PlayerController.h"
 #include "TankController.generated.h"
 
+USTRUCT()
+struct FMovementInput
+{
+	GENERATED_BODY()
+
+		UPROPERTY()
+		float BodyRotationInput;
+	UPROPERTY()
+		float GunRotationYaw;
+	UPROPERTY()
+		float ForwardInput;
+
+	FMovementInput()
+	{
+		BodyRotationInput = 0.0f;
+		GunRotationYaw = 0.0f;
+		ForwardInput = 0.0f;
+	}
+};
+
+
 /**
  * 
  */
@@ -59,14 +80,11 @@ protected:
 	int64 TimeOffsetFromServer;
 	bool TimeOffsetIsValid;
 
-	//Input variables
-	float ForwardInput;
-	float RotationInput;
-
 	//Input functions
 	void MoveForward(float AxisValue);
 	void RotateBody(float AxisValue);
 
 private:
-	float MouseYaw;
+	//Struct sent to server for movement
+	FMovementInput Input;
 };

@@ -20,8 +20,6 @@ ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : 
 
 	bIsFiring = false;
 
-	MouseYaw = 0.0f;
-
 	bShowMouseCursor = true;
 };
 
@@ -68,46 +66,37 @@ void ATankController::Tick(float DeltaTime)
 			FVector FinalAim = GroundPoint - Origin;
 			FinalAim.Normalize();
 
-			MouseYaw = FinalAim.Rotation().Yaw;
+			Input.GunRotationYaw = FinalAim.Rotation().Yaw;
 		}
 
 		//Clients only send to server
-		if (GetLocalRole() < ROLE_Authority && (ForwardInput == 0.0f && RotationInput == 0.0f))
+		if (GetLocalRole() < ROLE_Authority)
 		{
-			OwnerTank->ServerSetGunRotation(MouseYaw);
+			//Locally rotation gun for visually less lag
+			OwnerTank->SetGunRotation(Input.GunRotationYaw);
+			//Send all inputs to server
+			OwnerTank->ServerActivateMovementInput(Input);
 		}
-
-		//Locally rotation gun for visually less lag
-		OwnerTank->SetGunRotation(MouseYaw);
+		else
+		{
+			OwnerTank->ActivateMovementInput(Input);
+		}
 	}
 }
 
 void ATankController::MoveForward(float Value)
 {
-	ForwardInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
-
-	ATank* OwnerTank = Cast<ATank>(GetPawn());
-
-	if (OwnerTank != nullptr && IsLocalController())
+	if (IsLocalController())
 	{
-		//Send input whether the button is pressed or not so that the velocity gets redirected toward the forward vector
-		OwnerTank->MoveForward(ForwardInput, MouseYaw);
+		Input.ForwardInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
 	}
 }
 
 void ATankController::RotateBody(float Value)
 {
-	RotationInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
-
-	ATank* OwnerTank = Cast<ATank>(GetPawn());
-
-	if (OwnerTank != nullptr && IsLocalController())
+	if (IsLocalController())
 	{
-		//Body Rotation
-		if (RotationInput != 0.0f)
-		{
-			OwnerTank->RotateBody(RotationInput, MouseYaw);
-		}
+		Input.BodyRotationInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
 	}
 }
 

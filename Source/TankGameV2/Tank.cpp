@@ -3,7 +3,6 @@
 #include "Tank.h"
 #include "Containers/Array.h"
 #include "TankShell.h"
-#include "TankController.h"
 #include "TankState.h"
 #include "TankGameV2GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
@@ -304,7 +303,19 @@ void ATank::OnRep_ServerPhysicsState()
 	}
 }
 
-void ATank::MoveForward_Implementation(float ForwardInput, float Yaw)
+void ATank::ServerActivateMovementInput_Implementation(FMovementInput Input)
+{
+	ActivateMovementInput(Input);
+}
+
+void ATank::ActivateMovementInput(FMovementInput Input)
+{
+	MoveForward(Input.ForwardInput);
+	RotateBody(Input.BodyRotationInput);
+	SetGunRotation(Input.GunRotationYaw);
+}
+
+void ATank::MoveForward(float ForwardInput)
 {
 	if (ForwardInput != 0.0f)
 	{
@@ -326,8 +337,6 @@ void ATank::MoveForward_Implementation(float ForwardInput, float Yaw)
 		BodyStaticMesh->AddImpulseAtLocation(Force, Location);
 
 		CounteractDrifting();
-
-		SetGunRotation(Yaw);
 	}
 	else
 	{
@@ -335,19 +344,12 @@ void ATank::MoveForward_Implementation(float ForwardInput, float Yaw)
 	}
 }
 
-void ATank::RotateBody_Implementation(float RotationInput, float Yaw)
+void ATank::RotateBody(float RotationInput)
 {
 	FVector Torque = GetActorUpVector() * RotationInput * TurnTorque * GetGroundedSpringRatio();
 	BodyStaticMesh->AddAngularImpulse(Torque);
 
 	RedirectVelocityForward();
-
-	SetGunRotation(Yaw);
-}
-
-void ATank::ServerSetGunRotation_Implementation(float Yaw)
-{
-	SetGunRotation(Yaw);
 }
 
 void ATank::SetGunRotation(float Yaw)

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "TankController.h"
 #include "Tank.generated.h"
 
 #define PROXY_STATE_ARRAY_SIZE 20
@@ -126,13 +127,16 @@ public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION(Server, Reliable)
-		void MoveForward(float ForwardInput, float Yaw);
+		void ServerActivateMovementInput(FMovementInput Input);
 
-	UFUNCTION(Server, Reliable)
-		void RotateBody(float RotationInput, float Yaw);
+	UFUNCTION()
+		void ActivateMovementInput(FMovementInput Input);
 
-	UFUNCTION(Server, Reliable)
-		void ServerSetGunRotation(float Yaw);
+	UFUNCTION()
+		void MoveForward(float ForwardInput);
+
+	UFUNCTION()
+		void RotateBody(float RotationInput);
 
 	UFUNCTION()
 		void SetGunRotation(float Yaw);
