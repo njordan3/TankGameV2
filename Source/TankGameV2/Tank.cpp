@@ -26,6 +26,7 @@ ATank::ATank()
 
 	MaxHealth = 100.0f;
 	CurrentHealth = MaxHealth;
+	HealthPercentage = 1.0f;
 
 	FireRate = 0.25f;
 
@@ -396,6 +397,7 @@ void ATank::OnRep_CurrentHealth()
 void ATank::OnHealthUpdate()
 {
 	bool Dead = CurrentHealth <= 0;
+	HealthPercentage = CurrentHealth / MaxHealth;
 	AController* PC = GetController();
 
 	//Client
@@ -566,4 +568,12 @@ bool ATank::GunHasValidOverlapping()
 	}
 
 	return Valid;
+}
+
+FText ATank::GetHealthText()
+{
+	int32 HP = FMath::RoundHalfFromZero(CurrentHealth);
+	FString HPS = FString::FromInt(HP);
+	FText HPText = FText::FromString(HPS);
+	return HPText;
 }

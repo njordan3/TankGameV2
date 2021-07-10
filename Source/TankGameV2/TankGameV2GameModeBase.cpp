@@ -5,6 +5,7 @@
 #include "Tank.h"
 #include "TankController.h"
 #include "TankState.h"
+#include "TankHUD.h"
 #include "TankSpawnPoint.h"
 #include "LevelScripts/MyLevelScriptActorBase.h"
 #include "EngineUtils.h"
@@ -14,6 +15,7 @@ ATankGameV2GameModeBase::ATankGameV2GameModeBase()
 	PlayerControllerClass = ATankController::StaticClass();
 	DefaultPawnClass = ATank::StaticClass();
 	PlayerStateClass = ATankState::StaticClass();
+	HUDClass = ATankHUD::StaticClass();
 
 	NextBotNameID = 1;
 	RespawnTime = 3.0f;

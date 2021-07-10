@@ -63,6 +63,9 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentHealth)
 		float CurrentHealth;
 
+	UPROPERTY()
+		float HealthPercentage;
+
 	UFUNCTION()
 		void OnRep_CurrentHealth();
 
@@ -161,7 +164,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Health")
 		float TakeDamage(float DamageTaken, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
-	//FORCEINLINE void SetRelativeGunRotation(FRotator Rotation) { GunStaticMesh->SetWorldRotation(Rotation); }
+	UFUNCTION(BlueprintPure, Category = "Health")
+		FORCEINLINE float GetHealth() { return HealthPercentage; }
+
+	UFUNCTION(BlueprintPure, Category = "Health")
+		FText GetHealthText();
 
 	FORCEINLINE FRotator GetRelativeGunRotation() const { return GunStaticMesh->GetRelativeRotation(); }
 
