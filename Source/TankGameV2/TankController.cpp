@@ -72,7 +72,7 @@ void ATankController::Tick(float DeltaTime)
 		//Clients only send to server
 		if (GetLocalRole() < ROLE_Authority)
 		{
-			//Locally rotation gun for visually less lag
+			//Locally rotate gun for visually less lag
 			OwnerTank->SetGunRotation(Input.GunRotationYaw);
 			//Send all inputs to server
 			OwnerTank->ServerActivateMovementInput(Input);

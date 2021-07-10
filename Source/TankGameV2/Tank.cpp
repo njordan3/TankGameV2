@@ -13,6 +13,9 @@
 #include "Net/UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
 
+#include "Components/TimelineComponent.h"
+#include "Components/BoxComponent.h"
+
 // Sets default values
 ATank::ATank()
 {
