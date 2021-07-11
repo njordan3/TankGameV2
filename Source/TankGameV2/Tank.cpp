@@ -132,7 +132,7 @@ ATank::ATank()
 	//Initialize HUD Reload Animation Timeline
 	ReloadCurve = CreateDefaultSubobject<UCurveFloat>(TEXT("FireRateAnimation"));
 	ReloadCurve->FloatCurve.AddKey(0.0f, 0.0f);
-	ReloadCurve->FloatCurve.AddKey(FireRate, FireRate);
+	CurrentReloadCurvePoint = ReloadCurve->FloatCurve.AddKey(FireRate, FireRate);
 
 	FOnTimelineFloat TimelineCallback;
 	FOnTimelineEventStatic TimelineFinishedCallback;
@@ -140,7 +140,7 @@ ATank::ATank()
 	TimelineCallback.BindUFunction(this, FName("SetReloadValue"));
 	TimelineFinishedCallback.BindUFunction(this, FName("SetReloadState"));
 
-	ReloadTimeline = NewObject<UTimelineComponent>(this, FName("Reload UI Animation"));
+	ReloadTimeline = NewObject<UTimelineComponent>(this, FName("Reload HUD Animation"));
 	ReloadTimeline->AddInterpFloat(ReloadCurve, TimelineCallback);
 	ReloadTimeline->SetTimelineFinishedFunc(TimelineFinishedCallback);
 	ReloadTimeline->RegisterComponent();
@@ -652,4 +652,11 @@ void ATank::UpdateReload()
 	ReloadPercentage = PrevReloadPercentage = 0.0f;
 	ReloadValue = 0.0f;
 	ReloadTimeline->PlayFromStart();
+}
+
+void ATank::SetFireRate(float NewFireRate)
+{ 
+	FireRate = NewFireRate;
+	ReloadCurve->FloatCurve.DeleteKey(CurrentReloadCurvePoint);
+	CurrentReloadCurvePoint = ReloadCurve->FloatCurve.AddKey(FireRate, FireRate);
 }

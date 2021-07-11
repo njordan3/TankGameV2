@@ -118,6 +118,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		float DriftCoefficient;
 
+	//Actual FireRate per second is 1/FireRate
 	UPROPERTY(EditDefaultsOnly, Category = "Gameplay")
 		float FireRate;
 
@@ -139,6 +140,7 @@ protected:
 	bool bCanFire;
 	FTimerHandle ReloadTimer;
 	class UTimelineComponent* ReloadTimeline;
+	FKeyHandle CurrentReloadCurvePoint;
 	float CurveFloatValue;
 	float ReloadValue;
 	float ReloadPercentage;
@@ -209,7 +211,7 @@ public:
 
 	FORCEINLINE float GetTurnTorque() const { return TurnTorque; }
 
-	FORCEINLINE float GetFireRate() const { return FireRate; }
+	void SetFireRate(const float NewFireRate);
 
 	FVector GetDirectedSuspensionNormal(float Direction = 0.0f);
 
