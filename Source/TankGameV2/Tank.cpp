@@ -137,8 +137,8 @@ ATank::ATank()
 	FOnTimelineFloat TimelineCallback;
 	FOnTimelineEventStatic TimelineFinishedCallback;
 
-	TimelineCallback.BindUFunction(this, FName("SetReloadValue"));
-	TimelineFinishedCallback.BindUFunction(this, FName("SetReloadState"));
+	TimelineCallback.BindUFunction(this, FName("UpdateReloadPercentage"));
+	TimelineFinishedCallback.BindUFunction(this, FName("ResetReloadState"));
 
 	ReloadTimeline = NewObject<UTimelineComponent>(this, FName("Reload HUD Animation"));
 	ReloadTimeline->AddInterpFloat(ReloadCurve, TimelineCallback);
@@ -540,8 +540,7 @@ void ATank::FireShell()
 {
 	if (IsLocallyControlled())
 	{
-		UpdateReload();
-		//GetWorld()->GetTimerManager().SetTimer(ReloadTimer, this, &ATank::StopShellFire, FireRate, false);
+		BeginReloadHUDAnimation();
 	}
 
 	FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
@@ -634,20 +633,20 @@ FText ATank::GetReloadText()
 	return ReloadText;
 }
 
-void ATank::SetReloadValue()
+void ATank::UpdateReloadPercentage()
 {
 	float TimelineValue = ReloadTimeline->GetPlaybackPosition();
 	CurveFloatValue = PrevReloadPercentage + (1.0f/FireRate) * ReloadCurve->GetFloatValue(TimelineValue);
 	ReloadPercentage = FMath::Clamp(CurveFloatValue, 0.0f, 1.0f);
 }
 
-void ATank::SetReloadState()
+void ATank::ResetReloadState()
 {
 	StopShellFire();
 	ReloadValue = 1.0f;
 }
 
-void ATank::UpdateReload()
+void ATank::BeginReloadHUDAnimation()
 {
 	ReloadPercentage = PrevReloadPercentage = 0.0f;
 	ReloadValue = 0.0f;

@@ -129,13 +129,13 @@ protected:
 		UCurveFloat* ReloadCurve;
 
 	UFUNCTION()
-		void SetReloadValue();
+		void UpdateReloadPercentage();
 
 	UFUNCTION()
-		void SetReloadState();
+		void ResetReloadState();
 
 	UFUNCTION()
-		void UpdateReload();
+		void BeginReloadHUDAnimation();
 
 	bool bCanFire;
 	FTimerHandle ReloadTimer;
@@ -196,7 +196,7 @@ public:
 		FText GetHealthText();
 
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
-		FORCEINLINE float GetReload() { return ReloadPercentage; }
+		FORCEINLINE float GetReloadPercentage() { return ReloadPercentage; }
 
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 		FText GetReloadText();
