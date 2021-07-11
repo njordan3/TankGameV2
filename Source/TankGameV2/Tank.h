@@ -121,6 +121,29 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Gameplay")
 		float FireRate;
 
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+		void StopShellFire();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
+		UCurveFloat* ReloadCurve;
+
+	UFUNCTION()
+		void SetReloadValue();
+
+	UFUNCTION()
+		void SetReloadState();
+
+	UFUNCTION()
+		void UpdateReload();
+
+	bool bCanFire;
+	FTimerHandle ReloadTimer;
+	class UTimelineComponent* ReloadTimeline;
+	float CurveFloatValue;
+	float ReloadValue;
+	float ReloadPercentage;
+	float PrevReloadPercentage;
+
 	// Projectile class to spawn.
 	UPROPERTY(EditDefaultsOnly, Category = "TankShell")
 		TSubclassOf<class ATankShell> ProjectileClass;
@@ -170,6 +193,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Health")
 		FText GetHealthText();
 
+	UFUNCTION(BlueprintPure, Category = "Gameplay")
+		FORCEINLINE float GetReload() { return ReloadPercentage; }
+
+	UFUNCTION(BlueprintPure, Category = "Gameplay")
+		FText GetReloadText();
+
 	FORCEINLINE FRotator GetRelativeGunRotation() const { return GunStaticMesh->GetRelativeRotation(); }
 
 	FORCEINLINE float GetForwardForce() const { return ForwardForce; }
@@ -188,6 +217,9 @@ public:
 
 	//Returns true if there are no overlapping Actors or if the only overlapping Actors are other Tanks or are Tank Shells
 	bool GunHasValidOverlapping();
+
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+		void StartShellFire();
 
 	UPROPERTY(EditAnywhere)
 		class UStaticMeshComponent* BodyStaticMesh;

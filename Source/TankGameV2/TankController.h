@@ -54,9 +54,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 		void StartShellFire();
 
-	UFUNCTION(BlueprintCallable, Category = "Gameplay")
-		void StopShellFire();
-
 	/** Gets the game state */
 	//class ATankGameStateBase* GetGameState();
 
@@ -72,9 +69,6 @@ protected:
 	any sort of known online subsystem so we do it this way */
 	UFUNCTION(Reliable, Server, WithValidation)
 		void ServerSetPlayerName(const FString& PlayerName);
-
-	bool bIsFiring;
-	FTimerHandle FiringTimer;
 
 	int64 TimeServerTimeRequestWasPlaced;
 	int64 TimeOffsetFromServer;

@@ -28,7 +28,10 @@ ATank::ATank()
 	CurrentHealth = MaxHealth;
 	HealthPercentage = 1.0f;
 
+	bCanFire = true;
 	FireRate = 0.25f;
+	ReloadPercentage = 1.0f;
+	ReloadPercentage = PrevReloadPercentage = 1.0f;
 
 	SuspensionLength = 60.0f;
 	SpringCoefficient = 2000.0f;
@@ -125,6 +128,22 @@ ATank::ATank()
 	//Initialize Back Left Spring Component =======================================
 	BackLeftSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("BackLeftSpringComponent"));
 	BackLeftSpringComp->SetupAttachment(BodyStaticMesh);
+
+	//Initialize HUD Reload Animation Timeline
+	ReloadCurve = CreateDefaultSubobject<UCurveFloat>(TEXT("FireRateAnimation"));
+	ReloadCurve->FloatCurve.AddKey(0.0f, 0.0f);
+	ReloadCurve->FloatCurve.AddKey(FireRate, FireRate);
+
+	FOnTimelineFloat TimelineCallback;
+	FOnTimelineEventStatic TimelineFinishedCallback;
+
+	TimelineCallback.BindUFunction(this, FName("SetReloadValue"));
+	TimelineFinishedCallback.BindUFunction(this, FName("SetReloadState"));
+
+	ReloadTimeline = NewObject<UTimelineComponent>(this, FName("Reload UI Animation"));
+	ReloadTimeline->AddInterpFloat(ReloadCurve, TimelineCallback);
+	ReloadTimeline->SetTimelineFinishedFunc(TimelineFinishedCallback);
+	ReloadTimeline->RegisterComponent();
 }
 
 // Called when the game starts or when spawned
@@ -187,6 +206,11 @@ void ATank::Tick(float DeltaTime)
 		ServerPhysicsState.GunPos = GunStaticMesh->GetComponentLocation();
 		ServerPhysicsState.GunRot = GunStaticMesh->GetComponentRotation();
 		ServerPhysicsState.Timestamp = ATankController::GetLocalTime();
+	}
+
+	if (IsLocallyControlled())
+	{
+		if (ReloadTimeline != nullptr) ReloadTimeline->TickComponent(DeltaTime, ELevelTick::LEVELTICK_TimeOnly, nullptr);
 	}
 }
 
@@ -407,14 +431,13 @@ void ATank::OnHealthUpdate()
 		{
 			if (PC != nullptr)
 			{
-				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You have been killed."));
+				
 				PC->UnPossess();
 			}
 		}
 		else
 		{
-			FString HealthMessage = FString::Printf(TEXT("You now have %f health remaining."), CurrentHealth);
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
+			//Took damage but didn't die
 		}
 	}
 	
@@ -437,15 +460,13 @@ void ATank::OnHealthUpdate()
 			{
 				if (PC != nullptr)
 				{
-					GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You have been killed."));
 					PC->UnPossess();
 				}
 			}
 		}
 		else
 		{
-			FString HealthMessage = FString::Printf(TEXT("You now have %f health remaining."), CurrentHealth);
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, HealthMessage);
+			//Took damage but didn't die
 		}
 	}
 }
@@ -517,6 +538,12 @@ float ATank::GetGroundedSpringRatio()
 
 void ATank::FireShell()
 {
+	if (IsLocallyControlled())
+	{
+		UpdateReload();
+		//GetWorld()->GetTimerManager().SetTimer(ReloadTimer, this, &ATank::StopShellFire, FireRate, false);
+	}
+
 	FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
 	FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
 
@@ -536,10 +563,27 @@ void ATank::FireShell()
 	}
 }
 
+void ATank::StartShellFire()
+{
+	if (bCanFire && GunHasValidOverlapping())
+	{
+		bCanFire = false;
+		FireShell();
+		ServerHandleShellFire();
+	}
+}
+
+void ATank::StopShellFire()
+{
+	bCanFire = true;
+}
+
 void ATank::ServerHandleShellFire_Implementation()
 {
-	if (GunHasValidOverlapping())
+	if (bCanFire && GunHasValidOverlapping())
 	{
+		bCanFire = false;
+		GetWorld()->GetTimerManager().SetTimer(ReloadTimer, this, &ATank::StopShellFire, FireRate, false);	//Start reload timer on server
 		MulticastHandleShellFire();
 	}
 }
@@ -576,4 +620,36 @@ FText ATank::GetHealthText()
 	FString HPS = FString::FromInt(HP);
 	FText HPText = FText::FromString(HPS);
 	return HPText;
+}
+
+FText ATank::GetReloadText()
+{
+	FText ReloadText = FText::FromString(TEXT("Fire!"));
+
+	if (!bCanFire)
+	{
+		ReloadText = FText::FromString(TEXT("Reloading"));
+	}
+
+	return ReloadText;
+}
+
+void ATank::SetReloadValue()
+{
+	float TimelineValue = ReloadTimeline->GetPlaybackPosition();
+	CurveFloatValue = PrevReloadPercentage + (1.0f/FireRate) * ReloadCurve->GetFloatValue(TimelineValue);
+	ReloadPercentage = FMath::Clamp(CurveFloatValue, 0.0f, 1.0f);
+}
+
+void ATank::SetReloadState()
+{
+	StopShellFire();
+	ReloadValue = 1.0f;
+}
+
+void ATank::UpdateReload()
+{
+	ReloadPercentage = PrevReloadPercentage = 0.0f;
+	ReloadValue = 0.0f;
+	ReloadTimeline->PlayFromStart();
 }

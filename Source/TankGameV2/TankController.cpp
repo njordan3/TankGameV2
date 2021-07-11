@@ -18,8 +18,6 @@ ATankController::ATankController(const FObjectInitializer& ObjectInitializer) : 
 	TimeOffsetIsValid = true;
 	TimeOffsetFromServer = 0;
 
-	bIsFiring = false;
-
 	bShowMouseCursor = true;
 };
 
@@ -106,19 +104,8 @@ void ATankController::StartShellFire()
 
 	if (OwnerTank != nullptr && IsLocalController())
 	{
-		if (!bIsFiring && OwnerTank->GunHasValidOverlapping())
-		{
-			bIsFiring = true;
-			GetWorld()->GetTimerManager().SetTimer(FiringTimer, this, &ATankController::StopShellFire, OwnerTank->GetFireRate(), false);
-			OwnerTank->FireShell();
-			OwnerTank->ServerHandleShellFire();
-		}
+		OwnerTank->StartShellFire();
 	}
-}
-
-void ATankController::StopShellFire()
-{
-	bIsFiring = false;
 }
 
 int64 ATankController::GetLocalTime()
