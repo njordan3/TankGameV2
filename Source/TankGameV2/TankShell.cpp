@@ -2,7 +2,6 @@
 
 
 #include "TankShell.h"
-#include "Tank.h"
 #include "TankShellExplosion.h"
 #include "TankState.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -110,13 +109,18 @@ void ATankShell::Destroyed()
 	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, Location, Rotation, true, EPSCPoolMethod::AutoRelease);
 
 	//Do final radial impulse and damage on the server
-	if (GetLocalRole() == ROLE_Authority)
+	if (GetInstigator()->GetLocalRole() == ROLE_Authority)
 	{
 		bool PlayerDamaged = false;
 		ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
 		if (Explosion)
 		{
-			PlayerDamaged = Explosion->FireImpulseWithDamage(BaseDamage, DamageType, (AActor*)0, GetInstigatorController(), PlayerHit, OuterRadius, InnerRadius, Impulse, ERadialImpulseFalloff::RIF_Linear);
+			PlayerDamaged = Explosion->FireImpulseWithDamage(BaseDamage, DamageType, (AActor*)0, GetInstigatorController(), PlayerDirectHit, DamageInfo, OuterRadius, InnerRadius, Impulse, ERadialImpulseFalloff::RIF_Linear);
+		}
+
+		if (DamageInfo.Num() > 0)
+		{
+			Cast<ATankController>(GetInstigatorController())->PlayDamageNumbers(DamageInfo);
 		}
 	}
 }
@@ -124,11 +128,13 @@ void ATankShell::Destroyed()
 void ATankShell::HitPlayer(AActor* Player, FVector ImpulseLocation)
 {
 	//If HitActor is a Tank, push the Tank and deal flat damage
-	if (GetLocalRole() == ROLE_Authority && Player->GetClass() == ATank::StaticClass())
+	if (GetInstigator()->GetLocalRole() == ROLE_Authority && Player->GetClass() == ATank::StaticClass())
 	{
 		Cast<ATank>(Player)->BodyStaticMesh->AddImpulseAtLocation(GetActorForwardVector() * Impulse * 2, ImpulseLocation);
 		UGameplayStatics::ApplyDamage(Player, BaseDamage, GetInstigatorController(), GetInstigator(), DamageType);
-		PlayerHit = Player;
+		DamageInfo.Add(FDamageNumberInfo(Player->GetActorLocation(), BaseDamage));
+		//Ignore the direct hit player in the radial explosion
+		PlayerDirectHit = Player;
 	}
 
 	Destroy();

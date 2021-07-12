@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Tank.h"
 #include "TankShell.generated.h"
+
+
 
 UCLASS()
 class TANKGAMEV2_API ATankShell : public AActor
@@ -71,5 +74,7 @@ public:
 	void FireInDirection(FVector& Direction);
 
 private:
-	AActor* PlayerHit;
+	AActor* PlayerDirectHit;
+
+	TArray<FDamageNumberInfo> DamageInfo;
 };

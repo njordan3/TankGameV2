@@ -11,7 +11,7 @@ struct FMovementInput
 {
 	GENERATED_BODY()
 
-		UPROPERTY()
+	UPROPERTY()
 		float BodyRotationInput;
 	UPROPERTY()
 		float GunRotationYaw;
@@ -26,6 +26,34 @@ struct FMovementInput
 	}
 };
 
+USTRUCT()
+struct FDamageNumberInfo
+{
+	GENERATED_BODY()
+
+		UPROPERTY()
+		FVector Position;
+
+	UPROPERTY()
+		int32 Damage;
+
+	FDamageNumberInfo()
+	{
+		Position = FVector::ZeroVector;
+		Damage = 0;
+	}
+
+	FDamageNumberInfo(FVector Pos, int32 Dmg)
+	{
+		Position = Pos;
+		Damage = Dmg;
+	}
+
+	FString ToString() const
+	{
+		return FString::FromInt(Damage);
+	}
+};
 
 /**
  * 
@@ -49,6 +77,9 @@ public:
 	static int64 GetLocalTime();
 
 	int64 GetNetworkTime();
+
+	UFUNCTION(Client, Reliable)
+		void PlayDamageNumbers(const TArray<FDamageNumberInfo>& DamageInfo);
 
 protected:
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")

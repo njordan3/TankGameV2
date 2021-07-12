@@ -7,8 +7,6 @@
 // Sets default values for this component's properties
 USpringComponent::USpringComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
 	PreviousSuspensionLengthDelta = 0.0f;
@@ -28,7 +26,6 @@ void USpringComponent::BeginPlay()
 	TArray<UPrimitiveComponent*> OwnerComponents;
 	GetOwner()->GetComponents<UPrimitiveComponent>(OwnerComponents, false);
 	Owner = OwnerComponents[0];
-	//Owner->SetSimulatePhysics(true);
 }
 
 // Called every frame
@@ -46,8 +43,6 @@ void USpringComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		FHitResult HitResult;
 		FCollisionQueryParams CollisionParams;
 		CollisionParams.AddIgnoredActor(GetOwner());	//Ignore the Tank's collision boundaries
-
-		DrawDebugLine(World, Start, End, FColor::Green, false, 0.01f, 0, 1);
 
 		Grounded = World->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
 

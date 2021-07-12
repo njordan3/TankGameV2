@@ -171,3 +171,11 @@ void ATankController::ServerSetPlayerName_Implementation(const FString& PlayerNa
 {
 	GetPlayerState<ATankState>()->SetPlayerName(PlayerName);
 }
+
+void ATankController::PlayDamageNumbers_Implementation(const TArray<FDamageNumberInfo>& DamageNumberInfo)
+{
+	for (auto& Info : DamageNumberInfo)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, Info.ToString());
+	}
+}

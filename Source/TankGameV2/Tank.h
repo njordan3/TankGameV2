@@ -132,9 +132,6 @@ protected:
 		void UpdateReloadPercentage();
 
 	UFUNCTION()
-		void ResetReloadState();
-
-	UFUNCTION()
 		void BeginReloadHUDAnimation();
 
 	bool bCanFire;
@@ -142,9 +139,9 @@ protected:
 	class UTimelineComponent* ReloadTimeline;
 	FKeyHandle CurrentReloadCurvePoint;
 	float CurveFloatValue;
-	float ReloadValue;
 	float ReloadPercentage;
 	float PrevReloadPercentage;
+	float ReloadAnimationStep;
 
 	// Projectile class to spawn.
 	UPROPERTY(EditDefaultsOnly, Category = "TankShell")

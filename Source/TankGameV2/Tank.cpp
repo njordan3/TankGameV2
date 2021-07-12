@@ -32,6 +32,7 @@ ATank::ATank()
 	FireRate = 0.25f;
 	ReloadPercentage = 1.0f;
 	ReloadPercentage = PrevReloadPercentage = 1.0f;
+	ReloadAnimationStep = 1.0f / FireRate;
 
 	SuspensionLength = 60.0f;
 	SpringCoefficient = 2000.0f;
@@ -138,7 +139,7 @@ ATank::ATank()
 	FOnTimelineEventStatic TimelineFinishedCallback;
 
 	TimelineCallback.BindUFunction(this, FName("UpdateReloadPercentage"));
-	TimelineFinishedCallback.BindUFunction(this, FName("ResetReloadState"));
+	TimelineFinishedCallback.BindUFunction(this, FName("StopShellFire"));
 
 	ReloadTimeline = NewObject<UTimelineComponent>(this, FName("Reload HUD Animation"));
 	ReloadTimeline->AddInterpFloat(ReloadCurve, TimelineCallback);
@@ -154,8 +155,7 @@ void ATank::BeginPlay()
 	// Set Front Right variables
 	FrontRightSpringComp->SetWorldLocationAndRotation(
 		BodyStaticMesh->GetSocketLocation(TEXT("FrontRight")),
-		BodyStaticMesh->GetSocketRotation(TEXT("FrontRight"))
-	);
+		BodyStaticMesh->GetSocketRotation(TEXT("FrontRight")));
 	FrontRightSpringComp->SuspensionLength = SuspensionLength;
 	FrontRightSpringComp->SpringCoefficient = SpringCoefficient;
 	FrontRightSpringComp->DampingCoefficient = DampingCoefficient;
@@ -163,8 +163,7 @@ void ATank::BeginPlay()
 	// Set Front Left variables
 	FrontLeftSpringComp->SetWorldLocationAndRotation(
 		BodyStaticMesh->GetSocketLocation(TEXT("FrontLeft")),
-		BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft"))
-	);
+		BodyStaticMesh->GetSocketRotation(TEXT("FrontLeft")));
 	FrontLeftSpringComp->SuspensionLength = SuspensionLength;
 	FrontLeftSpringComp->SpringCoefficient = SpringCoefficient;
 	FrontLeftSpringComp->DampingCoefficient = DampingCoefficient;
@@ -172,8 +171,7 @@ void ATank::BeginPlay()
 	// Set Back Right variables
 	BackRightSpringComp->SetWorldLocationAndRotation(
 		BodyStaticMesh->GetSocketLocation(TEXT("BackRight")),
-		BodyStaticMesh->GetSocketRotation(TEXT("BackRight"))
-	);
+		BodyStaticMesh->GetSocketRotation(TEXT("BackRight")));
 	BackRightSpringComp->SuspensionLength = SuspensionLength;
 	BackRightSpringComp->SpringCoefficient = SpringCoefficient;
 	BackRightSpringComp->DampingCoefficient = DampingCoefficient;
@@ -181,8 +179,7 @@ void ATank::BeginPlay()
 	// Set Back Left variables
 	BackLeftSpringComp->SetWorldLocationAndRotation(
 		BodyStaticMesh->GetSocketLocation(TEXT("BackLeft")),
-		BodyStaticMesh->GetSocketRotation(TEXT("BackLeft"))
-	);
+		BodyStaticMesh->GetSocketRotation(TEXT("BackLeft")));
 	BackLeftSpringComp->SuspensionLength = SuspensionLength;
 	BackLeftSpringComp->SpringCoefficient = SpringCoefficient;
 	BackLeftSpringComp->DampingCoefficient = DampingCoefficient;	
@@ -636,26 +633,20 @@ FText ATank::GetReloadText()
 void ATank::UpdateReloadPercentage()
 {
 	float TimelineValue = ReloadTimeline->GetPlaybackPosition();
-	CurveFloatValue = PrevReloadPercentage + (1.0f/FireRate) * ReloadCurve->GetFloatValue(TimelineValue);
+	CurveFloatValue = PrevReloadPercentage + ReloadAnimationStep * ReloadCurve->GetFloatValue(TimelineValue);
 	ReloadPercentage = FMath::Clamp(CurveFloatValue, 0.0f, 1.0f);
-}
-
-void ATank::ResetReloadState()
-{
-	StopShellFire();
-	ReloadValue = 1.0f;
 }
 
 void ATank::BeginReloadHUDAnimation()
 {
 	ReloadPercentage = PrevReloadPercentage = 0.0f;
-	ReloadValue = 0.0f;
 	ReloadTimeline->PlayFromStart();
 }
 
 void ATank::SetFireRate(float NewFireRate)
 { 
 	FireRate = NewFireRate;
+	ReloadAnimationStep = 1.0f / FireRate;
 	ReloadCurve->FloatCurve.DeleteKey(CurrentReloadCurvePoint);
 	CurrentReloadCurvePoint = ReloadCurve->FloatCurve.AddKey(FireRate, FireRate);
 }

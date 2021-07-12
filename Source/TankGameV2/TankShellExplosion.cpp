@@ -2,7 +2,6 @@
 
 
 #include "TankShellExplosion.h"
-#include "Tank.h"
 #include "Kismet/GameplayStatics.h"
 
 ATankShellExplosion::ATankShellExplosion()
@@ -37,7 +36,7 @@ void ATankShellExplosion::FireImpulse(float Radius, float Impulse, ERadialImpuls
 	Destroy();
 }
 
-bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<class UDamageType> DamageType, AActor* DamageCauser, AController* EventInstigator, AActor* IgnoreActor, float OuterRadius, float InnerRadius, float Impulse, ERadialImpulseFalloff Falloff)
+bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<class UDamageType> DamageType, AActor* DamageCauser, AController* EventInstigator, AActor* IgnoreActor, TArray<FDamageNumberInfo>& DamageInfo, float OuterRadius, float InnerRadius, float Impulse, ERadialImpulseFalloff Falloff)
 {
 	bool PlayerDamaged = false;
 
@@ -83,7 +82,13 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 						if (FinalDamage >= 1.0f)
 						{
 							UGameplayStatics::ApplyDamage(HitActor, FinalDamage, EventInstigator, DamageCauser, DamageType);
-							PlayerDamaged = true;
+
+							//Don't count self damage
+							if (EventInstigator->GetPawn() != HitActor)
+							{
+								DamageInfo.Add(FDamageNumberInfo(HitActor->GetActorLocation(), FMath::RoundHalfFromZero(FinalDamage)));
+								PlayerDamaged = true;
+							}
 						}
 					}
 				}

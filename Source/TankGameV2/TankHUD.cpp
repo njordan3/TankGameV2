@@ -6,8 +6,8 @@
 
 ATankHUD::ATankHUD()
 {
-	static ConstructorHelpers::FClassFinder<UUserWidget> HealthBarObj(TEXT("/Game/HUD/HUD_UI"));
-	HUDWidgetClass = HealthBarObj.Class;
+	static ConstructorHelpers::FClassFinder<UUserWidget> HUD(TEXT("/Game/HUD/HUD_UI"));
+	HUDWidgetClass = HUD.Class;
 }
 
 void ATankHUD::DrawHUD()
