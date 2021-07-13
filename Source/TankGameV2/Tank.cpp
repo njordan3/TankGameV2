@@ -581,7 +581,10 @@ void ATank::StartShellFire()
 {
 	if (bCanFire && GunHasValidOverlapping())
 	{
-		bCanFire = false;
+		if (GetLocalRole() < ROLE_Authority)
+		{
+			bCanFire = false;
+		}
 		FireShell();
 		ServerHandleShellFire();
 	}
