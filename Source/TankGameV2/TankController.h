@@ -32,20 +32,20 @@ struct FDamageNumberInfo
 	GENERATED_BODY()
 
 		UPROPERTY()
-		FVector Position;
+		AActor* Actor;
 
 	UPROPERTY()
 		int32 Damage;
 
 	FDamageNumberInfo()
 	{
-		Position = FVector::ZeroVector;
+		Actor = nullptr;
 		Damage = 0;
 	}
 
-	FDamageNumberInfo(FVector Pos, int32 Dmg)
+	FDamageNumberInfo(AActor* Actr, int32 Dmg)
 	{
-		Position = Pos;
+		Actor = Actr;
 		Damage = Dmg;
 	}
 

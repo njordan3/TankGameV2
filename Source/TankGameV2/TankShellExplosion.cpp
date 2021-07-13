@@ -86,7 +86,7 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 							//Don't count self damage
 							if (EventInstigator->GetPawn() != HitActor)
 							{
-								DamageInfo.Add(FDamageNumberInfo(HitActor->GetActorLocation(), FMath::RoundHalfFromZero(FinalDamage)));
+								DamageInfo.Add(FDamageNumberInfo(HitActor, FMath::RoundHalfFromZero(FinalDamage)));
 								PlayerDamaged = true;
 							}
 						}

@@ -147,6 +147,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "TankShell")
 		TSubclassOf<class ATankShell> ProjectileClass;
 
+	//Damage Number Widget
+	UPROPERTY(EditAnywhere, Category = "DamageNumber")
+		TSubclassOf<class UUserWidget> DamageNumberWidgetClass;
+
+	UPROPERTY(EditAnywhere, Category = "DamageNumber")
+		class UUserWidget* DamageNumberWidget;
+
+	UPROPERTY(EditAnywhere, Category = "DamageNumber")
+		class UWidgetComponent* DamageNumberWidgetComp;
+
 public:
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -165,6 +175,9 @@ public:
 
 	UFUNCTION()
 		void SetGunRotation(float Yaw);
+
+	UFUNCTION()
+		void PlayDamageNumber(int32 Damage);
 
 	void FireShell();
 

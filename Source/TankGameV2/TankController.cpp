@@ -176,6 +176,9 @@ void ATankController::PlayDamageNumbers_Implementation(const TArray<FDamageNumbe
 {
 	for (auto& Info : DamageNumberInfo)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, Info.ToString());
+		if (Info.Actor)
+		{
+			Cast<ATank>(Info.Actor)->PlayDamageNumber(Info.Damage);
+		}
 	}
 }

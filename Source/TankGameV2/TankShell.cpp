@@ -132,7 +132,7 @@ void ATankShell::HitPlayer(AActor* Player, FVector ImpulseLocation)
 	{
 		Cast<ATank>(Player)->BodyStaticMesh->AddImpulseAtLocation(GetActorForwardVector() * Impulse * 2, ImpulseLocation);
 		UGameplayStatics::ApplyDamage(Player, BaseDamage, GetInstigatorController(), GetInstigator(), DamageType);
-		DamageInfo.Add(FDamageNumberInfo(Player->GetActorLocation(), BaseDamage));
+		DamageInfo.Add(FDamageNumberInfo(Player, BaseDamage));
 		//Ignore the direct hit player in the radial explosion
 		PlayerDirectHit = Player;
 	}

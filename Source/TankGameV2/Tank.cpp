@@ -5,6 +5,7 @@
 #include "TankShell.h"
 #include "TankState.h"
 #include "TankGameV2GameModeBase.h"
+#include "DamageNumberWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -12,6 +13,8 @@
 #include "SpringComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/WidgetComponent.h"
 
 #include "Components/TimelineComponent.h"
 #include "Components/BoxComponent.h"
@@ -145,6 +148,21 @@ ATank::ATank()
 	ReloadTimeline->AddInterpFloat(ReloadCurve, TimelineCallback);
 	ReloadTimeline->SetTimelineFinishedFunc(TimelineFinishedCallback);
 	ReloadTimeline->RegisterComponent();
+
+	//Set Damage Number Widget
+	static ConstructorHelpers::FClassFinder<UUserWidget> Widget(TEXT("/Game/Widgets/DamageNumbers"));
+	DamageNumberWidgetClass = Widget.Class;
+	if (DamageNumberWidgetClass != nullptr)
+	{
+		DamageNumberWidget = CreateWidget<UUserWidget>(GetWorld(), DamageNumberWidgetClass);
+		DamageNumberWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("DamageNumberWidgetComp"));
+		DamageNumberWidgetComp->SetupAttachment(BodyStaticMesh);
+		DamageNumberWidgetComp->SetCollisionProfileName(TEXT("NoCollision"));
+		DamageNumberWidgetComp->SetWidget(DamageNumberWidget);
+		DamageNumberWidgetComp->SetWidgetClass(DamageNumberWidgetClass);
+		DamageNumberWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
+		DamageNumberWidgetComp->SetDrawSize(FVector2D(1.0f, 1.0f));
+	}
 }
 
 // Called when the game starts or when spawned
@@ -182,7 +200,7 @@ void ATank::BeginPlay()
 		BodyStaticMesh->GetSocketRotation(TEXT("BackLeft")));
 	BackLeftSpringComp->SuspensionLength = SuspensionLength;
 	BackLeftSpringComp->SpringCoefficient = SpringCoefficient;
-	BackLeftSpringComp->DampingCoefficient = DampingCoefficient;	
+	BackLeftSpringComp->DampingCoefficient = DampingCoefficient;
 }
 
 // Called every frame
@@ -607,6 +625,7 @@ bool ATank::GunHasValidOverlapping()
 		if (!Valid) break;
 	}
 
+
 	return Valid;
 }
 
@@ -649,4 +668,20 @@ void ATank::SetFireRate(float NewFireRate)
 	ReloadAnimationStep = 1.0f / FireRate;
 	ReloadCurve->FloatCurve.DeleteKey(CurrentReloadCurvePoint);
 	CurrentReloadCurvePoint = ReloadCurve->FloatCurve.AddKey(FireRate, FireRate);
+}
+
+void ATank::PlayDamageNumber(int32 Damage)
+{
+	UDamageNumberWidget* Widget = Cast<UDamageNumberWidget>(DamageNumberWidget);
+	UWidgetAnimation* Animation = Widget->Animation;
+	if (Animation)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::FromInt(Damage));
+		Widget->DamageText = FText::FromString(FString::Printf(TEXT("-%d"), Damage));
+		Widget->PlayAnimation(Animation);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No Animation Found"));
+	}
 }
