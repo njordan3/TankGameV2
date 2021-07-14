@@ -45,50 +45,47 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(OuterRadius);
 
 	//Get TArray of things hit by the sphere sweep
-	bool isHit = GetWorld()->SweepMultiByChannel(OutHits, MyLocation, MyLocation, FQuat::Identity, ECC_Visibility, Sphere);
+	GetWorld()->SweepMultiByChannel(OutHits, MyLocation, MyLocation, FQuat::Identity, ECC_PhysicsBody, Sphere);
 
-	if (isHit)
+	for (auto& Hit : OutHits)
 	{
-		for (auto& Hit : OutHits)
-		{
-			AActor* HitActor = Hit.GetActor();
+		AActor* HitActor = Hit.GetActor();
 
-			if (IgnoreActor != nullptr && HitActor == IgnoreActor)
+		if (IgnoreActor != nullptr && HitActor == IgnoreActor)
+		{
+			continue;
+		}
+
+		UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>((HitActor)->GetRootComponent());
+
+		if (MeshComp)
+		{
+			//Apply impulse only if simulating physics
+			if (MeshComp->IsSimulatingPhysics())
 			{
-				continue;
+				MeshComp->AddRadialImpulse(MyLocation, OuterRadius, Impulse, Falloff, true);
 			}
 
-			UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>((HitActor)->GetRootComponent());
-
-			if (MeshComp)
+			//Deal damage if the HitActor is a Tank
+			if (HitActor->GetClass() == ATank::StaticClass())
 			{
-				//Apply impulse only if simulating physics
-				if (MeshComp->IsSimulatingPhysics())
-				{
-					MeshComp->AddRadialImpulse(MyLocation, OuterRadius, Impulse, Falloff, true);
-				}
+				float Distance = FVector::Distance(MyLocation, Hit.ImpactPoint);
 
-				//Deal damage if the HitActor is a Tank
-				if (HitActor->GetClass() == ATank::StaticClass())
+				//Take no damage past 300 distance
+				if (Distance <= 300.0f)
 				{
-					float Distance = FVector::Distance(MyLocation, Hit.ImpactPoint);
-
-					//Take no damage past [InnerRadius] distance
-					if (Distance <= 100.0f)
+					//Decrease the damage as the Tank is farther away
+					float Ratio = (OuterRadius - Distance) / OuterRadius;
+					float FinalDamage = BaseDamage * Ratio * Ratio;
+					if (FinalDamage >= 1.0f)
 					{
-						//Decrease the damage as the Tank is farther away
-						float Ratio = (OuterRadius - Distance) / OuterRadius;
-						float FinalDamage = BaseDamage * Ratio * Ratio;
-						if (FinalDamage >= 1.0f)
-						{
-							UGameplayStatics::ApplyDamage(HitActor, FinalDamage, EventInstigator, DamageCauser, DamageType);
+						UGameplayStatics::ApplyDamage(HitActor, FinalDamage, EventInstigator, DamageCauser, DamageType);
 
-							//Don't count self damage
-							if (EventInstigator->GetPawn() != HitActor)
-							{
-								DamageInfo.Add(FDamageNumberInfo(HitActor, FMath::RoundHalfFromZero(FinalDamage)));
-								PlayerDamaged = true;
-							}
+						//Don't count self damage
+						if (EventInstigator->GetPawn() != HitActor)
+						{
+							DamageInfo.Add(FDamageNumberInfo(HitActor, FMath::RoundHalfFromZero(FinalDamage)));
+							PlayerDamaged = true;
 						}
 					}
 				}
