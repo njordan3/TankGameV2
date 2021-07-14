@@ -553,11 +553,6 @@ float ATank::GetGroundedSpringRatio()
 
 void ATank::FireShell()
 {
-	if (IsLocallyControlled())
-	{
-		BeginReloadHUDAnimation();
-	}
-
 	FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
 	FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
 
@@ -581,11 +576,16 @@ void ATank::StartShellFire()
 {
 	if (bCanFire && GunHasValidOverlapping())
 	{
+		if (IsLocallyControlled())
+		{
+			BeginReloadHUDAnimation();
+		}
+
 		if (GetLocalRole() < ROLE_Authority)
 		{
 			bCanFire = false;
 		}
-		FireShell();
+		
 		ServerHandleShellFire();
 	}
 }
@@ -601,15 +601,6 @@ void ATank::ServerHandleShellFire_Implementation()
 	{
 		bCanFire = false;
 		GetWorld()->GetTimerManager().SetTimer(ReloadTimer, this, &ATank::StopShellFire, FireRate, false);	//Start reload timer on server
-		MulticastHandleShellFire();
-	}
-}
-
-void ATank::MulticastHandleShellFire_Implementation()
-{
-	//Don't fire again if this is the client who initially fired
-	if (!IsLocallyControlled())
-	{
 		FireShell();
 	}
 }

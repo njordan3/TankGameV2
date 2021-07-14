@@ -184,9 +184,6 @@ public:
 	UFUNCTION(Server, Reliable)
 		void ServerHandleShellFire();
 
-	UFUNCTION(NetMulticast, Reliable)
-		void MulticastHandleShellFire();
-
 	UFUNCTION(BlueprintPure, Category = "Health")
 		FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 
