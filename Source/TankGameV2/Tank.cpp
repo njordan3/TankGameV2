@@ -67,7 +67,7 @@ ATank::ATank()
 	BodyStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
 	BodyStaticMesh->SetAngularDamping(AngularDamping);
 	BodyStaticMesh->SetLinearDamping(LinearDamping);
-	BodyStaticMesh->SetCollisionProfileName(TEXT("PhysicsActor"));
+	BodyStaticMesh->SetCollisionProfileName(TEXT("TankBody"));
 	SetRootComponent(BodyStaticMesh);
 
 	//Change Mass Properties
@@ -110,7 +110,7 @@ ATank::ATank()
 	GunStaticMesh->SetEnableGravity(false);
 	GunStaticMesh->bApplyImpulseOnDamage = false;
 	GunStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
-	GunStaticMesh->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	GunStaticMesh->SetCollisionProfileName(TEXT("TankGun"));
 	GunStaticMesh->SetGenerateOverlapEvents(true);
 
 	//Change Mass Properties
@@ -610,7 +610,8 @@ bool ATank::GunHasValidOverlapping()
 	bool Valid = true;
 
 	TArray<AActor*> OverlappingActors;
-	GetOverlappingActors(OverlappingActors);
+
+	GunStaticMesh->GetOverlappingActors(OverlappingActors);
 
 	for (auto& Actor : OverlappingActors)
 	{
@@ -670,12 +671,7 @@ void ATank::PlayDamageNumber(int32 Damage)
 	UWidgetAnimation* Animation = Widget->Animation;
 	if (Animation)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::FromInt(Damage));
 		Widget->DamageText = FText::FromString(FString::Printf(TEXT("-%d"), Damage));
 		Widget->PlayAnimation(Animation);
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No Animation Found"));
 	}
 }

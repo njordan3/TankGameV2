@@ -3,6 +3,7 @@
 
 #include "TankShellExplosion.h"
 #include "Kismet/GameplayStatics.h"
+#include "DrawDebugHelpers.h"
 
 ATankShellExplosion::ATankShellExplosion()
 {
@@ -17,19 +18,16 @@ void ATankShellExplosion::FireImpulse(float Radius, float Impulse, ERadialImpuls
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
 
 	//Get TArray of things hit by the sphere sweep
-	bool isHit = GetWorld()->SweepMultiByChannel(OutHits, MyLocation, MyLocation, FQuat::Identity, ECC_PhysicsBody, Sphere);
+	GetWorld()->SweepMultiByChannel(OutHits, MyLocation, MyLocation, FQuat::Identity, ECC_PhysicsBody, Sphere);
 
-	if (isHit)
+	for (auto& Hit : OutHits)
 	{
-		for (auto& Hit : OutHits)
-		{
-			UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>((Hit.GetActor())->GetRootComponent());
+		UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>((Hit.GetActor())->GetRootComponent());
 
-			//Apply impulse only if simulating physics
-			if (MeshComp && MeshComp->IsSimulatingPhysics())
-			{
-				MeshComp->AddRadialImpulse(MyLocation, Radius, Impulse, Falloff, true);
-			}
+		//Apply impulse only if simulating physics
+		if (MeshComp && MeshComp->IsSimulatingPhysics())
+		{
+			MeshComp->AddRadialImpulse(MyLocation, Radius, Impulse, Falloff, true);
 		}
 	}
 		
@@ -44,8 +42,10 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 	FVector MyLocation = GetActorLocation();
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(OuterRadius);
 
+	//DrawDebugSphere(GetWorld(), MyLocation, OuterRadius, 50, FColor::Purple, true);
+
 	//Get TArray of things hit by the sphere sweep
-	GetWorld()->SweepMultiByChannel(OutHits, MyLocation, MyLocation, FQuat::Identity, ECC_PhysicsBody, Sphere);
+	GetWorld()->SweepMultiByChannel(OutHits, MyLocation, MyLocation, FQuat::Identity, ECC_Visibility, Sphere);
 
 	for (auto& Hit : OutHits)
 	{
@@ -60,32 +60,47 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 
 		if (MeshComp)
 		{
-			//Apply impulse only if simulating physics
-			if (MeshComp->IsSimulatingPhysics())
+			FHitResult BlockingHit;
+
+			//DrawDebugLine(GetWorld(), MyLocation, Hit.ImpactPoint, FColor::Orange, true);
+
+			if (GetWorld()->LineTraceSingleByChannel(BlockingHit, MyLocation, Hit.ImpactPoint, ECC_Visibility))
 			{
-				MeshComp->AddRadialImpulse(MyLocation, OuterRadius, Impulse, Falloff, true);
+				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Hit"));
 			}
-
-			//Deal damage if the HitActor is a Tank
-			if (HitActor->GetClass() == ATank::StaticClass())
+			else
 			{
-				float Distance = FVector::Distance(MyLocation, Hit.ImpactPoint);
+				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Not Hit"));
 
-				//Take no damage past 300 distance
-				if (Distance <= 300.0f)
+				//Apply impulse only if simulating physics
+				if (MeshComp->IsSimulatingPhysics())
 				{
-					//Decrease the damage as the Tank is farther away
-					float Ratio = (OuterRadius - Distance) / OuterRadius;
-					float FinalDamage = BaseDamage * Ratio * Ratio;
-					if (FinalDamage >= 1.0f)
-					{
-						UGameplayStatics::ApplyDamage(HitActor, FinalDamage, EventInstigator, DamageCauser, DamageType);
+					MeshComp->AddRadialImpulse(MyLocation, OuterRadius, Impulse, Falloff, true);
+				}
 
-						//Don't count self damage
-						if (EventInstigator->GetPawn() != HitActor)
+				//Deal damage if the HitActor is a Tank
+				if (HitActor->GetClass() == ATank::StaticClass())
+				{
+					//UGameplayStatics::ApplyRadialDamage(GetWorld(), BaseDamage, MyLocation, 300.0f, DamageType, TArray<AActor*>(), DamageCauser, EventInstigator, false, ECC_GameTraceChannel1);
+
+					float Distance = FVector::Distance(MyLocation, Hit.ImpactPoint);
+
+					//Take no damage past 300 distance
+					if (Distance <= 300.0f)
+					{
+						//Decrease the damage as the Tank is farther away
+						float Ratio = (OuterRadius - Distance) / OuterRadius;
+						float FinalDamage = BaseDamage * Ratio * Ratio;
+						if (FinalDamage >= 1.0f)
 						{
-							DamageInfo.Add(FDamageNumberInfo(HitActor, FMath::RoundHalfFromZero(FinalDamage)));
-							PlayerDamaged = true;
+							UGameplayStatics::ApplyDamage(HitActor, FinalDamage, EventInstigator, DamageCauser, DamageType);
+
+							//Don't count self damage
+							if (EventInstigator->GetPawn() != HitActor)
+							{
+								DamageInfo.Add(FDamageNumberInfo(HitActor, FMath::RoundHalfFromZero(FinalDamage)));
+								PlayerDamaged = true;
+							}
 						}
 					}
 				}

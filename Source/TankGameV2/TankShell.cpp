@@ -113,11 +113,11 @@ void ATankShell::Destroyed()
 	//Do final radial impulse and damage on the server
 	if (GetInstigator()->GetLocalRole() == ROLE_Authority)
 	{
-		bool PlayerDamaged = false;
+		bool IsPlayerDamaged = false;
 		ATankShellExplosion* Explosion = GetWorld()->SpawnActor<ATankShellExplosion>(ATankShellExplosion::StaticClass(), Location, Rotation);
 		if (Explosion)
 		{
-			PlayerDamaged = Explosion->FireImpulseWithDamage(BaseDamage, DamageType, (AActor*)0, GetInstigatorController(), PlayerDirectHit, DamageInfo, OuterRadius, InnerRadius, Impulse, ERadialImpulseFalloff::RIF_Linear);
+			IsPlayerDamaged = Explosion->FireImpulseWithDamage(BaseDamage, DamageType, (AActor*)0, GetInstigatorController(), PlayerDirectHit, DamageInfo, OuterRadius, InnerRadius, Impulse, ERadialImpulseFalloff::RIF_Linear);
 		}
 
 		if (DamageInfo.Num() > 0)
