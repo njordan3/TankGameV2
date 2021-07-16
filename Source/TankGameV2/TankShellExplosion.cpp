@@ -62,16 +62,12 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 		{
 			FHitResult BlockingHit;
 
-			//DrawDebugLine(GetWorld(), MyLocation, Hit.ImpactPoint, FColor::Orange, true);
+			//Check if the space between the Sphere center and the Hit location is blocked by another Actor
+			bool IsBlocked = GetWorld()->LineTraceSingleByChannel(BlockingHit, MyLocation, Hit.ImpactPoint, ECC_Visibility);
 
-			if (GetWorld()->LineTraceSingleByChannel(BlockingHit, MyLocation, Hit.ImpactPoint, ECC_Visibility))
+			//If not blocked by another Actor, apply physics and damage
+			if (!IsBlocked)
 			{
-				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Hit"));
-			}
-			else
-			{
-				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Not Hit"));
-
 				//Apply impulse only if simulating physics
 				if (MeshComp->IsSimulatingPhysics())
 				{
@@ -81,8 +77,6 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 				//Deal damage if the HitActor is a Tank
 				if (HitActor->GetClass() == ATank::StaticClass())
 				{
-					//UGameplayStatics::ApplyRadialDamage(GetWorld(), BaseDamage, MyLocation, 300.0f, DamageType, TArray<AActor*>(), DamageCauser, EventInstigator, false, ECC_GameTraceChannel1);
-
 					float Distance = FVector::Distance(MyLocation, Hit.ImpactPoint);
 
 					//Take no damage past 300 distance

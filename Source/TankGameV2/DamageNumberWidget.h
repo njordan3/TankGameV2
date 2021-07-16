@@ -16,9 +16,20 @@ class TANKGAMEV2_API UDamageNumberWidget : public UUserWidget
 	
 public:
 
+	FORCEINLINE void SetCurrentColor(FSlateColor NewColor) { CurrentColor = NewColor; }
+
 	UPROPERTY(BlueprintReadWrite)
 		UWidgetAnimation* Animation;
 
 	UPROPERTY(BlueprintReadWrite)
 		FText DamageText;
+
+	UPROPERTY(BlueprintReadWrite)
+		FSlateColor DamageColor;
+
+	UPROPERTY(BlueprintReadWrite)
+		FSlateColor HealColor;
+
+	UPROPERTY(BlueprintReadWrite)
+		FSlateColor CurrentColor;
 };

@@ -149,7 +149,7 @@ ATank::ATank()
 	ReloadTimeline->SetTimelineFinishedFunc(TimelineFinishedCallback);
 	ReloadTimeline->RegisterComponent();
 
-	//Set Damage Number Widget
+	//Set Damage Number Widget. The widget component keeps the widget on the Tank instead of 0,0,0
 	static ConstructorHelpers::FClassFinder<UUserWidget> Widget(TEXT("/Game/Widgets/DamageNumbers"));
 	DamageNumberWidgetClass = Widget.Class;
 	if (DamageNumberWidgetClass != nullptr)
@@ -668,10 +668,15 @@ void ATank::SetFireRate(float NewFireRate)
 void ATank::PlayDamageNumber(int32 Damage)
 {
 	UDamageNumberWidget* Widget = Cast<UDamageNumberWidget>(DamageNumberWidget);
-	UWidgetAnimation* Animation = Widget->Animation;
-	if (Animation)
+	if (Damage > 0)
 	{
+		Widget->SetCurrentColor(Widget->DamageColor);
 		Widget->DamageText = FText::FromString(FString::Printf(TEXT("-%d"), Damage));
-		Widget->PlayAnimation(Animation);
 	}
+	else
+	{
+		Widget->SetCurrentColor(Widget->HealColor);
+		Widget->DamageText = FText::FromString(FString::Printf(TEXT("+%d"), Damage));
+	}
+	Widget->PlayAnimation(Widget->Animation);
 }
