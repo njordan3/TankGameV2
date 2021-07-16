@@ -89,8 +89,8 @@ bool ATankShellExplosion::FireImpulseWithDamage(float BaseDamage, TSubclassOf<cl
 						{
 							UGameplayStatics::ApplyDamage(HitActor, FinalDamage, EventInstigator, DamageCauser, DamageType);
 
-							//Don't count self damage
-							if (EventInstigator->GetPawn() != HitActor)
+							//Don't count self damage or dead players
+							if (EventInstigator->GetPawn() != HitActor && Cast<ATank>(HitActor)->GetCurrentHealth() > 0.0f)
 							{
 								DamageInfo.Add(FDamageNumberInfo(HitActor, FMath::RoundHalfFromZero(FinalDamage)));
 								PlayerDamaged = true;
