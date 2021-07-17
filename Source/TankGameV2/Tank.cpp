@@ -6,6 +6,7 @@
 #include "TankState.h"
 #include "TankGameV2GameModeBase.h"
 #include "DamageNumberWidget.h"
+#include "Utilities/TankGameV2Colors.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -15,7 +16,6 @@
 #include "DrawDebugHelpers.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/WidgetComponent.h"
-
 #include "Components/TimelineComponent.h"
 #include "Components/BoxComponent.h"
 
@@ -390,7 +390,7 @@ void ATank::MoveForward(float ForwardInput)
 void ATank::RotateBody(float RotationInput)
 {
 	FVector Torque = GetActorUpVector() * RotationInput * TurnTorque * GetGroundedSpringRatio();
-	BodyStaticMesh->AddAngularImpulse(Torque);
+	BodyStaticMesh->AddAngularImpulseInRadians(Torque);
 
 	RedirectVelocityForward();
 }
@@ -670,12 +670,12 @@ void ATank::PlayDamageNumber(int32 Damage)
 	UDamageNumberWidget* Widget = Cast<UDamageNumberWidget>(DamageNumberWidget);
 	if (Damage > 0)
 	{
-		Widget->SetCurrentColor(Widget->DamageColor);
+		Widget->SetCurrentColor(UTankGameV2Colors::DamageColor);
 		Widget->DamageText = FText::FromString(FString::Printf(TEXT("-%d"), Damage));
 	}
 	else
 	{
-		Widget->SetCurrentColor(Widget->HealColor);
+		Widget->SetCurrentColor(UTankGameV2Colors::HealColor);
 		Widget->DamageText = FText::FromString(FString::Printf(TEXT("+%d"), Damage));
 	}
 	Widget->PlayAnimation(Widget->Animation);

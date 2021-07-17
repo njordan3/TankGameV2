@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/LevelScriptActor.h"
+#include "../Utilities/TankGameV2Colors.h"
 #include "MyLevelScriptActorBase.generated.h"
 
 /**
@@ -18,6 +19,8 @@ public:
 	AMyLevelScriptActorBase();
 
 	FVector GetDefaultSpawn();
+
+	virtual void BeginPlay() override;
 
 protected:
 	UFUNCTION(BluePrintCallable, Category = "SetDefaultPlayerSpawn")

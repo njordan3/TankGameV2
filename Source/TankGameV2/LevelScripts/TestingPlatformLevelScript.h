@@ -16,4 +16,6 @@ class TANKGAMEV2_API ATestingPlatformLevelScript : public AMyLevelScriptActorBas
 	
 public:
 	ATestingPlatformLevelScript();
+
+	virtual void BeginPlay() override;
 };

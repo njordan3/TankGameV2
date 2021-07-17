@@ -25,11 +25,5 @@ public:
 		FText DamageText;
 
 	UPROPERTY(BlueprintReadWrite)
-		FSlateColor DamageColor;
-
-	UPROPERTY(BlueprintReadWrite)
-		FSlateColor HealColor;
-
-	UPROPERTY(BlueprintReadWrite)
 		FSlateColor CurrentColor;
 };
