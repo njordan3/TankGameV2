@@ -366,6 +366,14 @@ void ATank::MoveForward(float ForwardInput)
 		FVector RightVector = GetActorRightVector();
 		FVector UpVector = GetActorUpVector();
 
+		//If ForwardInput is the opposite sign of the current Velocity, double the amount of force applied
+		//The Dot Product is positive when moving forward and negative when moving backwards
+		//This operation checks if ForwardInput and the Dot Product are opposite signs
+		if ((ForwardInput * FVector::DotProduct(ForwardVector, GetVelocity())) < 0.0f)
+		{
+			ForwardInput *= 2.0f;
+		}
+
 		//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
 		FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
 		//Calculate the force and reduce it by the ratio of however many Springs are grounded
