@@ -360,7 +360,9 @@ void ATank::ActivateMovementInput(FMovementInput Input)
 
 void ATank::MoveForward(float ForwardInput)
 {
-	if (ForwardInput != 0.0f)
+	float GroundedSpringRatio = GetGroundedSpringRatio();
+
+	if (ForwardInput != 0.0f && GroundedSpringRatio > 0.0f)
 	{
 		FVector ForwardVector = GetActorForwardVector();
 		FVector RightVector = GetActorRightVector();
@@ -377,7 +379,7 @@ void ATank::MoveForward(float ForwardInput)
 		//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
 		FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
 		//Calculate the force and reduce it by the ratio of however many Springs are grounded
-		FVector Force = Direction * ForwardInput * ForwardForce * GetGroundedSpringRatio();
+		FVector Force = Direction * ForwardInput * ForwardForce * GroundedSpringRatio;
 		//Calculate location to add the force. The offsets add a "bounciness" 
 		//to accelerating and braking by moving the force location slightly away from the local center
 		FVector Location = GetActorLocation() +
@@ -397,10 +399,30 @@ void ATank::MoveForward(float ForwardInput)
 
 void ATank::RotateBody(float RotationInput)
 {
-	FVector Torque = GetActorUpVector() * RotationInput * TurnTorque * GetGroundedSpringRatio();
-	BodyStaticMesh->AddAngularImpulseInRadians(Torque);
+	float GroundedSpringRatio = GetGroundedSpringRatio();
 
-	RedirectVelocityForward();
+	if (GroundedSpringRatio > 0.0f)
+	{
+		if (RotationInput != 0.0f)
+		{
+			//If RotationInput is the opposite sign of the current Angular Velocity Z component, double the amount of torque applied
+			if (RotationInput * BodyStaticMesh->GetPhysicsAngularVelocityInRadians().Z < 0.0f)
+			{
+				RotationInput *= 2.0f;
+			}
+
+			FVector Torque = GetActorUpVector() * RotationInput * TurnTorque * GroundedSpringRatio;
+			BodyStaticMesh->AddAngularImpulseInRadians(Torque);
+		}
+		//Remove rotation if no RotationInput and the Velocity Magnitude is less than or equal to 500
+		//Using FVector2D because we don't want to consider Z component in the Magnitude
+		else if (FVector2D(GetVelocity()).Size() <= 500.0f)
+		{
+			BodyStaticMesh->SetPhysicsAngularVelocity(FVector::ZeroVector);
+		}
+
+		RedirectVelocityForward();
+	}
 }
 
 void ATank::SetGunRotation(float Yaw)
