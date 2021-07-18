@@ -41,9 +41,9 @@ ATank::ATank()
 	SpringCoefficient = 2000.0f;
 	DampingCoefficient = 100.0f;
 
-	ForwardForce = 500.0f;	
+	ForwardForce = 1500.0f;	
 	ForwardForceOffset = FVector(10.0f, 0.0f, -10.0f);
-	TurnTorque = 15000.0f;
+	TurnTorque = 45000.0f;
 	AngularDamping = 1.5f;
 	LinearDamping = 0.5f;
 	DriftCoefficient = 1.0f;
