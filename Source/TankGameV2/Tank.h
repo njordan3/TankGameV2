@@ -177,6 +177,9 @@ public:
 		void SetGunRotation(float Yaw);
 
 	UFUNCTION()
+		void UseHandBrake();
+
+	UFUNCTION()
 		void PlayDamageNumber(int32 Damage);
 
 	void FireShell();

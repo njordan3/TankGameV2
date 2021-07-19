@@ -356,6 +356,16 @@ void ATank::ActivateMovementInput(FMovementInput Input)
 	MoveForward(Input.ForwardInput);
 	RotateBody(Input.BodyRotationInput);
 	SetGunRotation(Input.GunRotationYaw);
+
+	if (Input.IsHandBraked)
+	{
+		UseHandBrake();
+	}
+}
+
+void ATank::UseHandBrake()
+{
+
 }
 
 void ATank::MoveForward(float ForwardInput)

@@ -37,6 +37,8 @@ void ATankController::SetupInputComponent()
 	InputComponent->BindAxis("MoveForward", this, &ATankController::MoveForward);
 	InputComponent->BindAxis("RotateBody", this, &ATankController::RotateBody);
 
+	InputComponent->BindAction("HandBrake", IE_Pressed, this, &ATankController::ActivateHandBrake);
+	InputComponent->BindAction("HandBrake", IE_Released, this, &ATankController::DeactivateHandBrake);
 	InputComponent->BindAction("FireShell", IE_Pressed, this, &ATankController::StartShellFire);
 
 	check(GEngine != nullptr);
@@ -96,6 +98,16 @@ void ATankController::RotateBody(float Value)
 	{
 		Input.BodyRotationInput = FMath::Clamp<float>(Value, -1.0f, 1.0f);
 	}
+}
+
+void ATankController::ActivateHandBrake()
+{
+	Input.IsHandBraked = true;
+}
+
+void ATankController::DeactivateHandBrake()
+{
+	Input.IsHandBraked = false;
 }
 
 void ATankController::StartShellFire()

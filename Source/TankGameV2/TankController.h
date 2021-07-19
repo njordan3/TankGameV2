@@ -17,12 +17,15 @@ struct FMovementInput
 		float GunRotationYaw;
 	UPROPERTY()
 		float ForwardInput;
+	UPROPERTY()
+		bool IsHandBraked;
 
 	FMovementInput()
 	{
 		BodyRotationInput = 0.0f;
 		GunRotationYaw = 0.0f;
 		ForwardInput = 0.0f;
+		IsHandBraked = false;
 	}
 };
 
@@ -82,9 +85,6 @@ public:
 		void PlayDamageNumbers(const TArray<FDamageNumberInfo>& DamageInfo);
 
 protected:
-	UFUNCTION(BlueprintCallable, Category = "Gameplay")
-		void StartShellFire();
-
 	/** Gets the game state */
 	//class ATankGameStateBase* GetGameState();
 
@@ -108,6 +108,10 @@ protected:
 	//Input functions
 	void MoveForward(float AxisValue);
 	void RotateBody(float AxisValue);
+	void ActivateHandBrake();
+	void DeactivateHandBrake();
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+		void StartShellFire();
 
 private:
 	//Struct sent to server for movement
