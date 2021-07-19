@@ -168,16 +168,16 @@ public:
 		void ActivateMovementInput(FMovementInput Input);
 
 	UFUNCTION()
-		void MoveForward(float ForwardInput);
+		void MoveForward(float ForwardInput, bool IsHandBraked, float GroundedSpringRatio);
 
 	UFUNCTION()
-		void RotateBody(float RotationInput);
+		void RotateBody(float RotationInput, float GroundedSringRatio);
 
 	UFUNCTION()
 		void SetGunRotation(float Yaw);
 
 	UFUNCTION()
-		void UseHandBrake();
+		void UseHandBrake(bool IsHandBraked, float GroundedSpringRatio);
 
 	UFUNCTION()
 		void PlayDamageNumber(int32 Damage);

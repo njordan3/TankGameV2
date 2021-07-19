@@ -227,6 +227,8 @@ void ATank::Tick(float DeltaTime)
 	{
 		if (ReloadTimeline != nullptr) ReloadTimeline->TickComponent(DeltaTime, ELevelTick::LEVELTICK_TimeOnly, nullptr);
 	}
+
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::FromInt(GetVelocity().Size()));
 }
 
 void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimeProps) const
@@ -353,64 +355,78 @@ void ATank::ServerActivateMovementInput_Implementation(FMovementInput Input)
 
 void ATank::ActivateMovementInput(FMovementInput Input)
 {
-	MoveForward(Input.ForwardInput);
-	RotateBody(Input.BodyRotationInput);
-	SetGunRotation(Input.GunRotationYaw);
-
-	if (Input.IsHandBraked)
-	{
-		UseHandBrake();
-	}
-}
-
-void ATank::UseHandBrake()
-{
-
-}
-
-void ATank::MoveForward(float ForwardInput)
-{
 	float GroundedSpringRatio = GetGroundedSpringRatio();
 
-	if (ForwardInput != 0.0f && GroundedSpringRatio > 0.0f)
-	{
-		FVector ForwardVector = GetActorForwardVector();
-		FVector RightVector = GetActorRightVector();
-		FVector UpVector = GetActorUpVector();
+	MoveForward(Input.ForwardInput, Input.IsHandBraked, GroundedSpringRatio);
+	RotateBody(Input.BodyRotationInput, GroundedSpringRatio);
+	SetGunRotation(Input.GunRotationYaw);
+	UseHandBrake(Input.IsHandBraked, GroundedSpringRatio);
+}
 
-		//If ForwardInput is the opposite sign of the current Velocity, double the amount of force applied
-		//The Dot Product is positive when moving forward and negative when moving backwards
-		//This operation checks if ForwardInput and the Dot Product are opposite signs
-		if ((ForwardInput * FVector::DotProduct(ForwardVector, GetVelocity())) < 0.0f)
+void ATank::UseHandBrake(bool IsHandBraked, float GroundedSpringRatio)
+{
+	//Only work while fully grounded
+	if (IsHandBraked && GroundedSpringRatio == 1.0f)
+	{
+		FVector MovementVector = GetVelocity();
+
+		if (MovementVector.Size() > 30.0f)
 		{
-			ForwardInput *= 2.0f;
+			MovementVector.X *= 0.9f;
+			MovementVector.Y *= 0.9f;
+		}
+		else
+		{
+			MovementVector.X = 0.0f;
+			MovementVector.Y = 0.0f;
 		}
 
-		//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
-		FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
-		//Calculate the force and reduce it by the ratio of however many Springs are grounded
-		FVector Force = Direction * ForwardInput * ForwardForce * GroundedSpringRatio;
-		//Calculate location to add the force. The offsets add a "bounciness" 
-		//to accelerating and braking by moving the force location slightly away from the local center
-		FVector Location = GetActorLocation() +
-			ForwardForceOffset.X * ForwardVector +
-			ForwardForceOffset.Y * RightVector +
-			ForwardForceOffset.Z * UpVector;
-
-		BodyStaticMesh->AddImpulseAtLocation(Force, Location);
-
-		CounteractDrifting();
-	}
-	else
-	{
-		RedirectVelocityForward();
+		BodyStaticMesh->SetPhysicsLinearVelocity(MovementVector);
 	}
 }
 
-void ATank::RotateBody(float RotationInput)
+void ATank::MoveForward(float ForwardInput, bool IsHandBraked, float GroundedSpringRatio)
 {
-	float GroundedSpringRatio = GetGroundedSpringRatio();
+	if (GroundedSpringRatio > 0.0f)
+	{
+		if (!IsHandBraked && ForwardInput != 0.0f)
+		{
+			FVector ForwardVector = GetActorForwardVector();
+			FVector RightVector = GetActorRightVector();
+			FVector UpVector = GetActorUpVector();
 
+			//If ForwardInput is the opposite sign of the current Velocity, double the amount of force applied
+			//The Dot Product is positive when moving forward and negative when moving backwards
+			//This operation checks if ForwardInput and the Dot Product are opposite signs
+			if ((ForwardInput * FVector::DotProduct(ForwardVector, GetVelocity())) < 0.0f)
+			{
+				ForwardInput *= 2.0f;
+			}
+
+			//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
+			FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
+			//Calculate the force and reduce it by the ratio of however many Springs are grounded
+			FVector Force = Direction * ForwardInput * ForwardForce * GroundedSpringRatio;
+			//Calculate location to add the force. The offsets add a "bounciness" 
+			//to accelerating and braking by moving the force location slightly away from the local center
+			FVector Location = GetActorLocation() +
+				ForwardForceOffset.X * ForwardVector +
+				ForwardForceOffset.Y * RightVector +
+				ForwardForceOffset.Z * UpVector;
+
+			BodyStaticMesh->AddImpulseAtLocation(Force, Location);
+
+			CounteractDrifting();
+		}
+		else
+		{
+			RedirectVelocityForward();
+		}
+	}
+}
+
+void ATank::RotateBody(float RotationInput, float GroundedSpringRatio)
+{
 	if (GroundedSpringRatio > 0.0f)
 	{
 		if (RotationInput != 0.0f)
