@@ -259,6 +259,9 @@ private:
 
 	void ClientSimulateTankMovement();
 
+	//Applies a force on the current suspension normal at the offset of the center of mass
+	void ApplyForceOnSuspensionNormal(float Coeff);
+
 	AController* LastDamageInstigator;
 	AActor* LastDamageCauser;
 

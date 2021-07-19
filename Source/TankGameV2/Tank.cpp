@@ -228,7 +228,6 @@ void ATank::Tick(float DeltaTime)
 		if (ReloadTimeline != nullptr) ReloadTimeline->TickComponent(DeltaTime, ELevelTick::LEVELTICK_TimeOnly, nullptr);
 	}
 
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::FromInt(GetVelocity().Size()));
 }
 
 void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimeProps) const
@@ -368,20 +367,21 @@ void ATank::UseHandBrake(bool IsHandBraked, float GroundedSpringRatio)
 	//Only work while fully grounded
 	if (IsHandBraked && GroundedSpringRatio == 1.0f)
 	{
-		FVector MovementVector = GetVelocity();
+		FVector Velocity = GetVelocity();
 
-		if (MovementVector.Size() > 30.0f)
+		if (Velocity.Size() > 30.0f)
 		{
-			MovementVector.X *= 0.9f;
-			MovementVector.Y *= 0.9f;
+			//Get the sign of the direction the braking force should be applied in relative to the current velocity
+			//We want to apply a force in the opposite direction we are currently moving
+			//Using -2 and 2 doubles the force applied for faster braking
+			float Sign = (FVector::DotProduct(GetActorForwardVector(), Velocity) > 0) ? -2.0 : 2.0;
+
+			ApplyForceOnSuspensionNormal(Sign);
 		}
 		else
 		{
-			MovementVector.X = 0.0f;
-			MovementVector.Y = 0.0f;
+			BodyStaticMesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
 		}
-
-		BodyStaticMesh->SetPhysicsLinearVelocity(MovementVector);
 	}
 }
 
@@ -391,30 +391,15 @@ void ATank::MoveForward(float ForwardInput, bool IsHandBraked, float GroundedSpr
 	{
 		if (!IsHandBraked && ForwardInput != 0.0f)
 		{
-			FVector ForwardVector = GetActorForwardVector();
-			FVector RightVector = GetActorRightVector();
-			FVector UpVector = GetActorUpVector();
-
 			//If ForwardInput is the opposite sign of the current Velocity, double the amount of force applied
 			//The Dot Product is positive when moving forward and negative when moving backwards
 			//This operation checks if ForwardInput and the Dot Product are opposite signs
-			if ((ForwardInput * FVector::DotProduct(ForwardVector, GetVelocity())) < 0.0f)
+			if ((ForwardInput * FVector::DotProduct(GetActorForwardVector(), GetVelocity())) < 0.0f)
 			{
 				ForwardInput *= 2.0f;
 			}
 
-			//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
-			FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
-			//Calculate the force and reduce it by the ratio of however many Springs are grounded
-			FVector Force = Direction * ForwardInput * ForwardForce * GroundedSpringRatio;
-			//Calculate location to add the force. The offsets add a "bounciness" 
-			//to accelerating and braking by moving the force location slightly away from the local center
-			FVector Location = GetActorLocation() +
-				ForwardForceOffset.X * ForwardVector +
-				ForwardForceOffset.Y * RightVector +
-				ForwardForceOffset.Z * UpVector;
-
-			BodyStaticMesh->AddImpulseAtLocation(Force, Location);
+			ApplyForceOnSuspensionNormal(ForwardInput * GroundedSpringRatio);
 
 			CounteractDrifting();
 		}
@@ -735,4 +720,26 @@ void ATank::PlayDamageNumber(int32 Damage)
 		Widget->DamageText = FText::FromString(FString::Printf(TEXT("+%d"), Damage));
 	}
 	Widget->PlayAnimation(Widget->Animation);
+}
+
+void ATank::ApplyForceOnSuspensionNormal(float Coeff)
+{
+	FVector ForwardVector = GetActorForwardVector();
+	FVector RightVector = GetActorRightVector();
+	FVector UpVector = GetActorUpVector();
+
+	//Project the Tank's forward vector onto the plane of the Suspension's average raycasting impact normal
+	//Calculate the force and reduce it by the ratio of however many Springs are grounded
+	FVector Direction = UKismetMathLibrary::ProjectVectorOnToPlane(ForwardVector, GetDirectedSuspensionNormal());
+
+	FVector Force = Direction * ForwardForce * Coeff;
+
+	//Calculate location to add the force. The offsets add a "bounciness" 
+	//to accelerating and braking by moving the force location slightly away from the local center
+	FVector Location = GetActorLocation() +
+		ForwardForceOffset.X * ForwardVector +
+		ForwardForceOffset.Y * RightVector +
+		ForwardForceOffset.Z * UpVector;
+
+	BodyStaticMesh->AddImpulseAtLocation(Force, Location);
 }
