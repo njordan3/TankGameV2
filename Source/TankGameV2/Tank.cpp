@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Tank.h"
+#include "TankGun.h"
 #include "Containers/Array.h"
 #include "TankShell.h"
 #include "TankState.h"
@@ -25,17 +26,9 @@ ATank::ATank()
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	ProjectileClass = ATankShell::StaticClass();
-
 	MaxHealth = 100.0f;
 	CurrentHealth = MaxHealth;
 	HealthPercentage = 1.0f;
-
-	bCanFire = true;
-	FireRate = 0.25f;
-	ReloadPercentage = 1.0f;
-	ReloadPercentage = PrevReloadPercentage = 1.0f;
-	ReloadAnimationStep = 1.0f / FireRate;
 
 	SuspensionLength = 60.0f;
 	SpringCoefficient = 2000.0f;
@@ -101,21 +94,9 @@ ATank::ATank()
 	TankGunSpringArmComp->TargetArmLength = 0.0f;
 	TankGunSpringArmComp->SetIsReplicated(true);	//Replicate Spring Arm; otherwise the Tank Gun is in the wrong spot for clients
 
-	//Initialize Tank Gun Static Mesh =============================================
-	GunStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GunStaticMesh"));
-	GunStaticMesh->SetupAttachment(TankGunSpringArmComp, USpringArmComponent::SocketName);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> GunMesh(TEXT("/Game/TankMeshes/TankGun.TankGun"));
-	UStaticMesh* GunAsset = GunMesh.Object;
-	GunStaticMesh->SetStaticMesh(GunAsset);
-	GunStaticMesh->SetEnableGravity(false);
-	GunStaticMesh->bApplyImpulseOnDamage = false;
-	GunStaticMesh->bReplicatePhysicsToAutonomousProxy = false;
-	GunStaticMesh->SetCollisionProfileName(TEXT("TankGun"));
-	GunStaticMesh->SetGenerateOverlapEvents(true);
-
-	//Change Mass Properties
-	GunStaticMesh->SetMassOverrideInKg(NAME_None, 0.0f);
-	GunStaticMesh->GetBodyInstance()->UpdateMassProperties();
+	//Initialize Tank Gun =========================================================
+	Gun = CreateDefaultSubobject<UTankGun>(TEXT("TankGun"));
+	Gun->SetupAttachment(TankGunSpringArmComp, USpringArmComponent::SocketName);
 
 	//Initialize Front Right Spring Component =====================================
 	FrontRightSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("FrontRightSpringComponent"));
@@ -132,22 +113,6 @@ ATank::ATank()
 	//Initialize Back Left Spring Component =======================================
 	BackLeftSpringComp = CreateDefaultSubobject<USpringComponent>(TEXT("BackLeftSpringComponent"));
 	BackLeftSpringComp->SetupAttachment(BodyStaticMesh);
-
-	//Initialize HUD Reload Animation Timeline
-	ReloadCurve = CreateDefaultSubobject<UCurveFloat>(TEXT("FireRateAnimation"));
-	ReloadCurve->FloatCurve.AddKey(0.0f, 0.0f);
-	CurrentReloadCurvePoint = ReloadCurve->FloatCurve.AddKey(FireRate, FireRate);
-
-	FOnTimelineFloat TimelineCallback;
-	FOnTimelineEventStatic TimelineFinishedCallback;
-
-	TimelineCallback.BindUFunction(this, FName("UpdateReloadPercentage"));
-	TimelineFinishedCallback.BindUFunction(this, FName("StopShellFire"));
-
-	ReloadTimeline = NewObject<UTimelineComponent>(this, FName("Reload HUD Animation"));
-	ReloadTimeline->AddInterpFloat(ReloadCurve, TimelineCallback);
-	ReloadTimeline->SetTimelineFinishedFunc(TimelineFinishedCallback);
-	ReloadTimeline->RegisterComponent();
 
 	//Set Damage Number Widget. The widget component keeps the widget on the Tank instead of 0,0,0
 	static ConstructorHelpers::FClassFinder<UUserWidget> Widget(TEXT("/Game/Widgets/DamageNumbers"));
@@ -218,16 +183,15 @@ void ATank::Tick(float DeltaTime)
 		ServerPhysicsState.BodyPos = GetActorLocation();
 		ServerPhysicsState.BodyRot = GetActorRotation();
 		ServerPhysicsState.BodyVel = BodyStaticMesh->GetComponentVelocity();
-		ServerPhysicsState.GunPos = GunStaticMesh->GetComponentLocation();
-		ServerPhysicsState.GunRot = GunStaticMesh->GetComponentRotation();
+		ServerPhysicsState.GunPos = Gun->GetComponentLocation();
+		ServerPhysicsState.GunRot = Gun->GetComponentRotation();
 		ServerPhysicsState.Timestamp = ATankController::GetLocalTime();
 	}
 
-	if (IsLocallyControlled())
+	if (IsLocallyControlled() && Gun != nullptr)
 	{
-		if (ReloadTimeline != nullptr) ReloadTimeline->TickComponent(DeltaTime, ELevelTick::LEVELTICK_TimeOnly, nullptr);
+		Gun->TickComponent(DeltaTime, ELevelTick::LEVELTICK_TimeOnly, nullptr);
 	}
-
 }
 
 void ATank::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimeProps) const
@@ -248,7 +212,7 @@ void ATank::ClientSimulateTankMovement()
 		// of the proxy states mean nothing; that or we simply don't have any proxy
 		// states yet. Don't do any interpolation.
 		BodyStaticMesh->SetWorldLocationAndRotation(ServerPhysicsState.BodyPos, ServerPhysicsState.BodyRot);
-		GunStaticMesh->SetWorldLocationAndRotation(ServerPhysicsState.GunPos, ServerPhysicsState.GunRot);
+		Gun->SetWorldLocationAndRotation(ServerPhysicsState.GunPos, ServerPhysicsState.GunRot);
 	}
 	else
 	{
@@ -288,7 +252,7 @@ void ATank::ClientSimulateTankMovement()
 					{
 						FVector TargetGunPos = FMath::Lerp(LHS.GunPos, RHS.GunPos, Time);
 						FRotator TargetGunRot = FMath::Lerp(LHS.GunRot, RHS.GunRot, Time);
-						GunStaticMesh->SetWorldLocationAndRotation(TargetGunPos, TargetGunRot);
+						Gun->SetWorldLocationAndRotation(TargetGunPos, TargetGunRot);
 					}
 					
 					return;
@@ -310,7 +274,7 @@ void ATank::ClientSimulateTankMovement()
 
 				FVector GunPos = Latest.GunPos + Latest.BodyVel * ((float)ExtrapolationLength * 0.001f);
 				FRotator GunRot = Latest.GunRot;
-				GunStaticMesh->SetWorldLocationAndRotation(GunPos, GunRot);
+				Gun->SetWorldLocationAndRotation(GunPos, GunRot);
 			}
 			else
 			{
@@ -358,7 +322,7 @@ void ATank::ActivateMovementInput(FMovementInput Input)
 
 	MoveForward(Input.ForwardInput, Input.IsHandBraked, GroundedSpringRatio);
 	RotateBody(Input.BodyRotationInput, GroundedSpringRatio);
-	SetGunRotation(Input.GunRotationYaw);
+	Gun->SetGunRotation(Input.GunRotationYaw);
 	UseHandBrake(Input.IsHandBraked, GroundedSpringRatio);
 }
 
@@ -429,21 +393,11 @@ void ATank::RotateBody(float RotationInput, float GroundedSpringRatio)
 		//Using FVector2D because we don't want to consider Z component in the Magnitude
 		else if (FVector2D(GetVelocity()).Size() <= 500.0f)
 		{
-			BodyStaticMesh->SetPhysicsAngularVelocity(FVector::ZeroVector);
+			BodyStaticMesh->SetPhysicsAngularVelocityInRadians(FVector::ZeroVector);
 		}
 
 		RedirectVelocityForward();
 	}
-}
-
-void ATank::SetGunRotation(float Yaw)
-{
-	//Check if the Tank is upside down
-	FRotator Orientation = GetActorRotation();
-	int8 OrientationSign = ((Orientation.Pitch < -90.0f || Orientation.Pitch > 90.0f) || (Orientation.Roll < -90.0f || Orientation.Roll > 90.0f)) ? -1 : 1;	//Upside down is -1
-
-	Yaw = OrientationSign * (Yaw - GetActorForwardVector().Rotation().Yaw);
-	TankGunSpringArmComp->SetRelativeRotation(FRotator(0.0f, Yaw, 0.0f));
 }
 
 void ATank::CounteractDrifting()
@@ -592,118 +546,12 @@ float ATank::GetGroundedSpringRatio()
 	) / 4.0f;
 }
 
-void ATank::FireShell()
-{
-	FRotator MuzzleRotation = GunStaticMesh->GetSocketRotation(TEXT("GunMuzzle"));
-	FVector MuzzleLocation = GunStaticMesh->GetSocketLocation(TEXT("GunMuzzle"));
-
-	UWorld* World = GetWorld();
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.Instigator = this;
-
-	// Spawn the projectile at the muzzle.
-	ATankShell* Projectile = World->SpawnActor<ATankShell>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-
-	if (Projectile)
-	{
-		// Set the projectile's initial trajectory.
-		FVector Direction = MuzzleRotation.Vector();
-		Projectile->FireInDirection(Direction);
-	}
-}
-
-void ATank::StartShellFire()
-{
-	if (bCanFire && GunHasValidOverlapping())
-	{
-		if (IsLocallyControlled())
-		{
-			BeginReloadHUDAnimation();
-		}
-
-		if (GetLocalRole() < ROLE_Authority)
-		{
-			bCanFire = false;
-		}
-		
-		ServerHandleShellFire();
-	}
-}
-
-void ATank::StopShellFire()
-{
-	bCanFire = true;
-}
-
-void ATank::ServerHandleShellFire_Implementation()
-{
-	if (bCanFire && GunHasValidOverlapping())
-	{
-		bCanFire = false;
-		GetWorld()->GetTimerManager().SetTimer(ReloadTimer, this, &ATank::StopShellFire, FireRate, false);	//Start reload timer on server
-		FireShell();
-	}
-}
-
-bool ATank::GunHasValidOverlapping()
-{
-	bool Valid = true;
-
-	TArray<AActor*> OverlappingActors;
-
-	GunStaticMesh->GetOverlappingActors(OverlappingActors);
-
-	for (auto& Actor : OverlappingActors)
-	{
-		Valid = (Actor->GetClass() == ATank::StaticClass() || Actor->GetClass() == ATankShell::StaticClass());
-
-		if (!Valid) break;
-	}
-
-
-	return Valid;
-}
-
 FText ATank::GetHealthText()
 {
 	int32 HP = FMath::RoundHalfFromZero(CurrentHealth);
 	FString HPS = FString::FromInt(HP);
 	FText HPText = FText::FromString(HPS);
 	return HPText;
-}
-
-FText ATank::GetReloadText()
-{
-	FText ReloadText = FText::FromString(TEXT("Fire!"));
-
-	if (!bCanFire)
-	{
-		ReloadText = FText::FromString(TEXT("Reloading"));
-	}
-
-	return ReloadText;
-}
-
-void ATank::UpdateReloadPercentage()
-{
-	float TimelineValue = ReloadTimeline->GetPlaybackPosition();
-	CurveFloatValue = PrevReloadPercentage + ReloadAnimationStep * ReloadCurve->GetFloatValue(TimelineValue);
-	ReloadPercentage = FMath::Clamp(CurveFloatValue, 0.0f, 1.0f);
-}
-
-void ATank::BeginReloadHUDAnimation()
-{
-	ReloadPercentage = PrevReloadPercentage = 0.0f;
-	ReloadTimeline->PlayFromStart();
-}
-
-void ATank::SetFireRate(float NewFireRate)
-{ 
-	FireRate = NewFireRate;
-	ReloadAnimationStep = 1.0f / FireRate;
-	ReloadCurve->FloatCurve.DeleteKey(CurrentReloadCurvePoint);
-	CurrentReloadCurvePoint = ReloadCurve->FloatCurve.AddKey(FireRate, FireRate);
 }
 
 void ATank::PlayDamageNumber(int32 Damage)

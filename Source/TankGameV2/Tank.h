@@ -118,35 +118,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		float DriftCoefficient;
 
-	//Actual FireRate per second is 1/FireRate
-	UPROPERTY(EditDefaultsOnly, Category = "Gameplay")
-		float FireRate;
-
-	UFUNCTION(BlueprintCallable, Category = "Gameplay")
-		void StopShellFire();
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
-		UCurveFloat* ReloadCurve;
-
-	UFUNCTION()
-		void UpdateReloadPercentage();
-
-	UFUNCTION()
-		void BeginReloadHUDAnimation();
-
-	bool bCanFire;
-	FTimerHandle ReloadTimer;
-	class UTimelineComponent* ReloadTimeline;
-	FKeyHandle CurrentReloadCurvePoint;
-	float CurveFloatValue;
-	float ReloadPercentage;
-	float PrevReloadPercentage;
-	float ReloadAnimationStep;
-
-	// Projectile class to spawn.
-	UPROPERTY(EditDefaultsOnly, Category = "TankShell")
-		TSubclassOf<class ATankShell> ProjectileClass;
-
 	//Damage Number Widget
 	UPROPERTY(EditAnywhere, Category = "DamageNumber")
 		TSubclassOf<class UUserWidget> DamageNumberWidgetClass;
@@ -174,18 +145,10 @@ public:
 		void RotateBody(float RotationInput, float GroundedSringRatio);
 
 	UFUNCTION()
-		void SetGunRotation(float Yaw);
-
-	UFUNCTION()
 		void UseHandBrake(bool IsHandBraked, float GroundedSpringRatio);
 
 	UFUNCTION()
 		void PlayDamageNumber(int32 Damage);
-
-	void FireShell();
-
-	UFUNCTION(Server, Reliable)
-		void ServerHandleShellFire();
 
 	UFUNCTION(BlueprintPure, Category = "Health")
 		FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
@@ -205,14 +168,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Health")
 		FText GetHealthText();
 
-	UFUNCTION(BlueprintPure, Category = "Gameplay")
-		FORCEINLINE float GetReloadPercentage() { return ReloadPercentage; }
-
-	UFUNCTION(BlueprintPure, Category = "Gameplay")
-		FText GetReloadText();
-
-	FORCEINLINE FRotator GetRelativeGunRotation() const { return GunStaticMesh->GetRelativeRotation(); }
-
 	FORCEINLINE float GetForwardForce() const { return ForwardForce; }
 
 	FORCEINLINE FVector GetForwardForceOffset() const { return ForwardForceOffset; }
@@ -221,23 +176,15 @@ public:
 
 	FORCEINLINE float GetTurnTorque() const { return TurnTorque; }
 
-	void SetFireRate(const float NewFireRate);
-
 	FVector GetDirectedSuspensionNormal(float Direction = 0.0f);
 
 	float GetGroundedSpringRatio();
 
-	//Returns true if there are no overlapping Actors or if the only overlapping Actors are other Tanks or are Tank Shells
-	bool GunHasValidOverlapping();
-
-	UFUNCTION(BlueprintCallable, Category = "Gameplay")
-		void StartShellFire();
-
 	UPROPERTY(EditAnywhere)
 		class UStaticMeshComponent* BodyStaticMesh;
 
-	UPROPERTY(EditAnywhere)
-		UStaticMeshComponent* GunStaticMesh;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		class UTankGun* Gun;
 
 	UPROPERTY(EditAnywhere)
 		class USpringComponent* FrontRightSpringComp;

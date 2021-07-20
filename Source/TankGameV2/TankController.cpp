@@ -2,6 +2,7 @@
 
 #include "TankController.h"
 #include "Tank.h"
+#include "TankGun.h"
 #include "TankShell.h"
 #include "TankState.h"
 #include "DrawDebugHelpers.h"
@@ -58,7 +59,7 @@ void ATankController::Tick(float DeltaTime)
 		if (DeprojectMousePositionToWorld(MouseLocation, MouseDirection))
 		{
 			//Get the aim vector using mouse world location and direction
-			FVector Origin = OwnerTank->GunStaticMesh->GetComponentLocation();
+			FVector Origin = OwnerTank->Gun->GetComponentLocation();
 			FVector UpVector = OwnerTank->GetActorUpVector();
 			float d = FVector::DotProduct((FVector(0, 0, Origin.Z) - MouseLocation), UpVector)
 				/ FVector::DotProduct(MouseDirection, UpVector);
@@ -73,7 +74,7 @@ void ATankController::Tick(float DeltaTime)
 		if (GetLocalRole() < ROLE_Authority)
 		{
 			//Locally rotate gun for visually less lag
-			OwnerTank->SetGunRotation(Input.GunRotationYaw);
+			OwnerTank->Gun->SetGunRotation(Input.GunRotationYaw);
 			//Send all inputs to server
 			OwnerTank->ServerActivateMovementInput(Input);
 		}
@@ -116,7 +117,7 @@ void ATankController::StartShellFire()
 
 	if (OwnerTank != nullptr && IsLocalController())
 	{
-		OwnerTank->StartShellFire();
+		OwnerTank->Gun->StartShellFire();
 	}
 }
 
