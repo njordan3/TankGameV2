@@ -46,28 +46,30 @@ void USpringComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 		Grounded = World->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
 
-		//Check if the impact point is a wall, and set Grounded to false so it isn't considered in force calculations
-		FRotator ImpactRotation = HitResult.ImpactNormal.Rotation();
-		float Tolerance = 0.01F;
-		if (FMath::IsNearlyZero(ImpactRotation.Pitch, Tolerance) || FMath::IsNearlyZero(ImpactRotation.Yaw, Tolerance))
-		{
-			Grounded = false;
-			return;
-		}
-
 		if (Grounded)
 		{
-			float SuspensionLengthDelta = HitResult.Distance - SuspensionLength;
-			float Velocity = (SuspensionLengthDelta - PreviousSuspensionLengthDelta) / DeltaTime;
+			//Check if the impact point is a wall, and set Grounded to false so it isn't considered in force calculations
+			FRotator ImpactRotation = HitResult.ImpactNormal.Rotation();
+			float Tolerance = 0.01F;
 
-			FVector Force = -GetComponentRotation().Vector() * ((Velocity * -DampingCoefficient) - (SuspensionLengthDelta * SpringCoefficient));
+			//Consider a proper floor normal to be < 45 degrees because sin(45) = 0.707
+			//Is Grounded if ImpactNormal Z component is > 0.707
+			Grounded = (HitResult.ImpactNormal.Z > 0.707f);
 
-			Owner->AddForceAtLocation(Force, Start);
+			if (Grounded)
+			{
+				float SuspensionLengthDelta = HitResult.Distance - SuspensionLength;
+				float Velocity = (SuspensionLengthDelta - PreviousSuspensionLengthDelta) / DeltaTime;
 
-			PreviousSuspensionLengthDelta = SuspensionLengthDelta;
-			PreviousCompressionRatio = HitResult.Distance / SuspensionLength;
-			PreviousImpactPoint = HitResult.ImpactPoint;
-			PreviousImpactNormal = HitResult.ImpactNormal;
+				FVector Force = -GetComponentRotation().Vector() * ((Velocity * -DampingCoefficient) - (SuspensionLengthDelta * SpringCoefficient));
+
+				Owner->AddForceAtLocation(Force, Start);
+
+				PreviousSuspensionLengthDelta = SuspensionLengthDelta;
+				PreviousCompressionRatio = HitResult.Distance / SuspensionLength;
+				PreviousImpactPoint = HitResult.ImpactPoint;
+				PreviousImpactNormal = HitResult.ImpactNormal;
+			}
 		}
 	}
 }
