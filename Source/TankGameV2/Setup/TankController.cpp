@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "TankController.h"
-#include "Tank.h"
-#include "TankGun.h"
-#include "TankShell.h"
+#include "../Tank/Tank.h"
+#include "../Weapons/TankGun.h"
+#include "../Weapons/TankShell.h"
 #include "TankState.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"

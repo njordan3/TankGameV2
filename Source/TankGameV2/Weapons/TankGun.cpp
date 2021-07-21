@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "TankGun.h"
+#include "../Tank/Tank.h"
 #include "TankShell.h"
 #include "Components/TimelineComponent.h"
 

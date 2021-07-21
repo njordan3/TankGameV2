@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Tank.h"
+#include "../Tank/Tank.h"
 #include "TankShell.generated.h"
 
 

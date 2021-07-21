@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
-#include "TankController.h"
+#include "../Setup/TankController.h"
 #include "Tank.generated.h"
 
 #define PROXY_STATE_ARRAY_SIZE 20

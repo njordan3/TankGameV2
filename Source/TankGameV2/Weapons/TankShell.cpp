@@ -3,7 +3,7 @@
 
 #include "TankShell.h"
 #include "TankShellExplosion.h"
-#include "TankState.h"
+#include "../Setup/TankState.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameFramework/DamageType.h"
 #include "Particles/ParticleSystem.h"

@@ -2,8 +2,8 @@
 
 
 #include "TankState.h"
-#include "Tank.h"
-#include "TankGameV2GameModeBase.h"
+#include "../Tank/Tank.h"
+#include "Gamemodes/TankGameV2GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 

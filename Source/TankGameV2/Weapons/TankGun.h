@@ -30,10 +30,10 @@ public:
 
 	//Returns true if there are no overlapping Actors or if the only overlapping Actors are other Tanks or are Tank Shells
 	UFUNCTION()
-		virtual bool GunHasValidOverlapping();
+		bool GunHasValidOverlapping();
 
 	UFUNCTION()
-		virtual void SetFireRate(const float NewFireRate);
+		void SetFireRate(const float NewFireRate);
 
 	UFUNCTION(Server, Reliable)
 		void ServerHandleShellFire();

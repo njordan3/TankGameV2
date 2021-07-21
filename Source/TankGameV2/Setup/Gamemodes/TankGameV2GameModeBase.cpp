@@ -2,12 +2,12 @@
 
 
 #include "TankGameV2GameModeBase.h"
-#include "Tank.h"
-#include "TankController.h"
-#include "TankState.h"
-#include "TankHUD.h"
-#include "TankSpawnPoint.h"
-#include "LevelScripts/MyLevelScriptActorBase.h"
+#include "../../Tank/Tank.h"
+#include "../TankController.h"
+#include "../TankState.h"
+#include "../TankHUD.h"
+#include "../../LevelScripts/TankSpawnPoint.h"
+#include "../../LevelScripts/MyLevelScriptActorBase.h"
 #include "EngineUtils.h"
 
 ATankGameV2GameModeBase::ATankGameV2GameModeBase()
